@@ -6,8 +6,9 @@ import { buildCodexRequest, buildCodexPollRequest, buildGeminiWebRequest, buildO
 const LS_KEY = 'comic-studio:providers';
 
 export const PRESETS = [
-  { name: 'codex-image-service (.11)', type: 'codex-image-service', baseurl: 'http://192.168.11.11:8000', model: 'gpt-image', apiKey: '' },
-  { name: 'gemini-web (.11)', type: 'gemini-web', baseurl: 'http://192.168.11.11:8070', model: 'gemini', apiKey: '' },
+  // 注意:從 HTTPS 頁面(GitHub Pages)只能打 HTTPS 端點,http:// 內網位址會被瀏覽器 mixed content 擋下
+  { name: 'codex-image-service', type: 'codex-image-service', baseurl: 'https://ching-tech.ddns.net/codex-image', model: 'gpt-image', apiKey: '' },
+  { name: 'gemini-web', type: 'gemini-web', baseurl: 'https://ching-tech.ddns.net/gemini-web', model: 'gemini', apiKey: '' },
   { name: '自訂 OpenAI 相容', type: 'openai-compatible', baseurl: 'https://api.openai.com', model: 'gpt-image-1', apiKey: '' },
 ];
 
