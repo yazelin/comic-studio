@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>comic-studio 工作台</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='18' fill='%23111114'/><text x='50' y='68' font-size='52' text-anchor='middle' fill='%23eee'>漫</text></svg>">
+<link rel="stylesheet" href="css/studio.css">
+</head>
+<body>
+<header id="topbar">
+  <strong>comic-studio</strong>
+  <nav id="tabs">
+    <button data-tab="project" class="active">專案</button>
+    <button data-tab="settings">模型設定</button>
+    <button data-tab="storyboard">章節分鏡</button>
+    <button data-tab="characters">角色庫</button>
+    <button data-tab="generate">生圖</button>
+    <button data-tab="layout">排版匯出</button>
+  </nav>
+  <span id="project-badge">未開啟專案</span>
+</header>
+
+<main>
+<!-- 專案 -->
+<section id="tab-project" class="tab active">
+  <h2>專案</h2>
+  <p class="hint">專案是你電腦上的一個資料夾,所有文字、分鏡、圖片都存在裡面(可自行 git 版控)。需要 Chrome / Edge 等 Chromium 瀏覽器。</p>
+  <button id="open-project" class="primary">開啟 / 建立專案資料夾</button>
+  <div id="project-form" hidden>
+    <label>作品標題<input id="p-title" placeholder="轉生異世界的我 token 無限"></label>
+    <label>全域畫風(每格生圖都會帶上)<textarea id="p-style" rows="3" placeholder="黑白日式漫畫風格,精細線稿,網點陰影,高對比"></textarea></label>
+    <label>預設生圖模型<select id="p-image-provider"></select></label>
+    <label>預設文字模型(分鏡用)<select id="p-text-provider"></select></label>
+    <button id="save-project" class="primary">儲存專案設定</button>
+  </div>
+</section>
+
+<!-- 模型設定 -->
+<section id="tab-settings" class="tab">
+  <h2>模型設定</h2>
+  <p class="hint">每一列是一個可用的 API 端點:自架服務或任何 OpenAI 相容 API。key 預設只留在記憶體,關閉分頁即消失;勾「記住」才會存進瀏覽器(此網域與其他 Pages 專案共用儲存空間,共用電腦請勿勾選)。</p>
+  <div id="provider-list"></div>
+  <button id="add-provider">新增一列</button>
+  <label class="inline"><input type="checkbox" id="remember-keys"> 記住(含 key)於此瀏覽器</label>
+  <button id="save-providers" class="primary">儲存設定</button>
+  <p class="hint">類型說明:codex-image-service 與 gemini-web 是可自架的開源服務(見 README);OpenAI 相容則填 baseurl / model / key 即可,例如 OpenAI 官方或任何相容閘道。</p>
+</section>
+
+<!-- 章節分鏡 -->
+<section id="tab-storyboard" class="tab">
+  <h2>章節分鏡</h2>
+  <div class="row">
+    <select id="sb-chapter"></select>
+    <button id="sb-new-chapter">新增章節</button>
+  </div>
+  <label>章節原文(貼上小說文字)<textarea id="sb-source" rows="10" placeholder="把整章小說文字貼進來…"></textarea></label>
+  <div class="row">
+    <button id="sb-save-source">儲存原文</button>
+    <button id="sb-ai" class="primary">AI 產生分鏡</button>
+    <span id="sb-status" class="status"></span>
+  </div>
+  <div id="sb-panels"></div>
+  <button id="sb-add-panel">新增一格</button>
+  <button id="sb-save" class="primary">儲存分鏡</button>
+</section>
+
+<!-- 角色庫 -->
+<section id="tab-characters" class="tab">
+  <h2>角色庫</h2>
+  <p class="hint">每個角色=文字設定卡+設定參考圖。生圖時設定卡必定拼進 prompt;參考圖可逐格勾選附帶,角色長相才會穩定。</p>
+  <div id="char-list" class="cards"></div>
+  <button id="add-char" class="primary">新增角色</button>
+  <span id="char-status" class="status"></span>
+</section>
+
+<!-- 生圖 -->
+<section id="tab-generate" class="tab">
+  <h2>生圖</h2>
+  <div class="row">
+    <select id="gen-chapter"></select>
+    <label class="inline">每次張數<select id="gen-count"><option>1</option><option>2</option><option selected>3</option><option>4</option></select></label>
+    <label class="inline">尺寸<select id="gen-size"><option>1024x1024</option><option selected>1024x1536</option><option>1536x1024</option></select></label>
+  </div>
+  <div id="gen-panels"></div>
+</section>
+
+<!-- 排版匯出 -->
+<section id="tab-layout" class="tab">
+  <h2>排版匯出</h2>
+  <p class="hint">在圖上點一下新增氣泡、拖曳移動、雙擊改文字。氣泡是 HTML 疊字,匯出後在閱讀器裡也是文字(可選取、清晰、可改)。</p>
+  <div class="row">
+    <select id="ly-chapter"></select>
+    <button id="ly-fill">從分鏡帶入對白氣泡</button>
+    <button id="ly-save" class="primary">儲存氣泡</button>
+    <span id="ly-status" class="status"></span>
+  </div>
+  <div id="ly-panels"></div>
+  <hr>
+  <h3>匯出 PWA 漫畫電子書</h3>
+  <p class="hint">匯出到專案的 dist/ 資料夾:一個自包含的離線閱讀站,丟到任何靜態空間(GitHub Pages、NAS、隨身碟)都能看、能安裝到手機桌面。</p>
+  <div class="row">
+    <button id="do-export" class="primary">匯出全部章節到 dist/</button>
+    <span id="export-status" class="status"></span>
+  </div>
+</section>
+</main>
+
+<div id="toast" hidden></div>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
