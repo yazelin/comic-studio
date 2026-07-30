@@ -66,6 +66,20 @@ export function parseStoryboard(text) {
   return { panels };
 }
 
+// 角色多視角設定圖(character sheet):一張圖含多視角+表情差分,
+// 之後當每格生圖的參考圖,一致性比單張立繪更穩
+export function buildCharacterSheetPrompt({ style, name, card }) {
+  return [
+    `畫風: ${style}`,
+    `角色設定圖(character reference sheet),單一張圖,白色背景,內容排版如下:`,
+    `- 左側:${name} 的全身立繪三視角(正面、側面、背面),同一身高比例並排`,
+    `- 右側:三個頭部特寫表情差分(平常、微笑、憤怒)`,
+    `角色外觀: ${card}`,
+    '所有視角必須是同一個角色,髮型、服裝、身形完全一致。',
+    '重要:圖中不要出現任何文字、標籤、箭頭或浮水印。',
+  ].join('\n');
+}
+
 // 單格生圖 prompt = 全域畫風 + 鏡頭 + 場景 + 出場角色設定卡 + 禁畫字
 export function buildPanelPrompt({ style, panel, characterCards = [] }) {
   const cast = characterCards

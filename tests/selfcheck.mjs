@@ -113,4 +113,24 @@ assert.ok(ch.text.includes('強調也要保留文字'));
 assert.ok(ch.text.includes('「引號」&符號'), '實體要解碼');
 assert.throws(() => extractChapterFromHTML('<html><body><div>沒有段落</div></body></html>'), /段落/);
 
+// ── buildCharacterSheetPrompt(多視角設定圖)──
+const { buildCharacterSheetPrompt } = await import('../js/prompt.js');
+const csp = buildCharacterSheetPrompt({ style: '黑白漫畫', name: '亞澤', card: '黑髮工程師' });
+assert.ok(csp.includes('三視角') && csp.includes('表情差分'), '要含多視角與表情要求');
+assert.ok(csp.includes('黑髮工程師') && csp.includes('黑白漫畫'));
+assert.ok(/不要出現任何文字/.test(csp));
+
+// ── applyCharacterMerge(角色去重合併)──
+const { applyCharacterMerge } = await import('../js/merge.js');
+const msb = { panels: [
+  { characters: ['yaze', '男子'] },
+  { characters: ['男子', '神官'] },
+  { characters: ['神官'] },
+] };
+const touched = applyCharacterMerge(msb, ['男子'], 'yaze');
+assert.equal(touched, 2, '有引用 from 的格才算 touched');
+assert.deepEqual(msb.panels[0].characters, ['yaze'], '合併後要去重');
+assert.deepEqual(msb.panels[1].characters, ['yaze', '神官']);
+assert.deepEqual(msb.panels[2].characters, ['神官'], '無關格不動');
+
 console.log('selfcheck: 全部通過');
