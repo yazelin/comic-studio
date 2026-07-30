@@ -7,7 +7,7 @@ export function buildReaderFiles({ title, chapters }) {
     title,
     chapters: chapters.map(ch => ({
       title: ch.title,
-      panels: ch.panels.map(p => ({ image: p.image, bubbles: p.bubbles || [] })),
+      panels: ch.panels.map(p => ({ image: p.image, bubbles: p.bubbles || [], effects: p.effects || [] })),
     })),
   };
 
@@ -26,7 +26,7 @@ export function buildReaderFiles({ title, chapters }) {
       }, null, 1) },
   ];
 
-  const imagePaths = data.chapters.flatMap(ch => ch.panels.map(p => './' + p.image));
+  const imagePaths = data.chapters.flatMap(ch => ch.panels.flatMap(p => ['./' + p.image, ...(p.effects || []).map(f => './' + f.image)]));
   const precache = [
     './',
     ...textFiles.map(f => './' + f.path),
@@ -95,7 +95,8 @@ body { background: #111114; color: #eee; font-family: "Noto Sans TC", "PingFang 
 #stage { max-width: 720px; margin: 0 auto; padding-bottom: 4rem; }
 .chapter-title { padding: 2.2rem 1rem 1.2rem; font-size: 1.2rem; font-weight: 700; color: #bbb; }
 .panel { position: relative; margin: 0 0 6px; }
-.panel img { display: block; width: 100%; height: auto; }
+.panel > img { display: block; width: 100%; height: auto; }
+.fx { position: absolute; transform: translate(-50%, -50%); pointer-events: none; }
 .bubble { position: absolute; transform: translate(-50%, -50%); background: #fff; color: #111; padding: .5em .8em; border-radius: 1em; font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif; font-size: clamp(11px, 2.6vw, 17px); line-height: 1.6; letter-spacing: .02em; max-width: 46%; box-shadow: 0 1px 4px rgba(0,0,0,.35); }
 .bubble.thought { background: none; box-shadow: none; border: none; color: #1c1a17; font-weight: 500; text-shadow: 0 0 6px #fff, 0 0 3px #fff, 0 0 1px #fff, 0 0 10px rgba(255,255,255,.8); }
 .bubble.narration { background: rgba(16,16,20,.72); color: #f2f0ea; border-radius: 3px; border: none; padding: .55em .9em; font-weight: 400; }
@@ -133,6 +134,20 @@ const READER_JS = `(async () => {
       img.loading = 'lazy';
       img.alt = '';
       wrap.appendChild(img);
+      for (const f of (p.effects || [])) {
+        const fx = document.createElement('img');
+        fx.className = 'fx';
+        fx.src = './' + f.image;
+        fx.loading = 'lazy';
+        fx.alt = '';
+        fx.style.left = f.x + '%';
+        fx.style.top = f.y + '%';
+        fx.style.width = (f.w || 60) + '%';
+        fx.style.transform = 'translate(-50%,-50%) rotate(' + (f.rot || 0) + 'deg)';
+        fx.style.opacity = String((f.op == null ? 100 : f.op) / 100);
+        fx.style.mixBlendMode = f.blend === 'normal' ? 'normal' : (f.blend || 'multiply');
+        wrap.appendChild(fx);
+      }
       for (const b of p.bubbles) {
         const el = document.createElement('div');
         el.className = 'bubble ' + (b.type || 'speech');

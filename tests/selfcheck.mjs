@@ -1,6 +1,6 @@
 // node tests/selfcheck.mjs — 純邏輯自我檢查,全綠才算過
 import assert from 'node:assert/strict';
-import { buildStoryboardPrompt, parseStoryboard, buildPanelPrompt, buildBakePrompt } from '../js/prompt.js';
+import { buildStoryboardPrompt, parseStoryboard, buildPanelPrompt, buildBakePrompt, buildEffectPrompt } from '../js/prompt.js';
 import { buildReaderFiles } from '../js/export.js';
 import { buildCodexRequest, buildGeminiWebRequest, buildOpenAIImageRequest, buildChatRequest } from '../js/providers-core.js';
 
@@ -163,3 +163,24 @@ assert.ok(bs.includes('exempt'), '效果字不吃基準');
 const sbx = parseStoryboard(JSON.stringify({ panels: [{ scene: 'x', dialogue: [{ speaker: '', text: '轟', type: 'sfx' }] }] }));
 assert.equal(sbx.panels[0].dialogue[0].type, 'sfx', '分鏡解析要收 sfx');
 console.log('sfx+fontRef ok');
+
+// ── buildEffectPrompt(效果圖層) ──
+const ep1 = buildEffectPrompt({ desc: '巨大的手繪擬聲字「轟」,碎裂筆勢', mode: 'ink', style: '溫暖動畫風' });
+assert.ok(ep1.includes('PURE SOLID WHITE'), '墨模式=純白底');
+assert.ok(ep1.includes('multiply'), '墨模式提示 multiply');
+assert.ok(ep1.includes('轟'), '要含描述');
+assert.ok(ep1.includes('溫暖動畫風'), '要含全域畫風');
+const ep2 = buildEffectPrompt({ desc: '一團金色光暈', mode: 'light' });
+assert.ok(ep2.includes('PURE SOLID BLACK') && ep2.includes('screen'), '光模式=純黑底+screen');
+
+// ── 匯出含效果層 ──
+const filesFx = buildReaderFiles({ title: 'T', chapters: [{ title: 'C1', panels: [
+  { image: 'imgs/a.png', bubbles: [], effects: [{ image: 'imgs/a-fx1.png', x: 50, y: 50, w: 60, rot: 0, op: 100, blend: 'multiply' }] },
+] }] });
+const dataJson = JSON.parse(filesFx.find(f => f.path === 'data.json').content);
+assert.equal(dataJson.chapters[0].panels[0].effects.length, 1, 'data.json 要帶 effects');
+const swFx = filesFx.find(f => f.path === 'sw.js').content;
+assert.ok(swFx.includes('./imgs/a-fx1.png'), '效果層圖要進 precache(漏了離線就破功)');
+const readerJs = filesFx.find(f => f.path === 'reader.js').content;
+assert.ok(readerJs.includes('mixBlendMode'), '閱讀器要渲染效果層');
+console.log('effect layers ok');

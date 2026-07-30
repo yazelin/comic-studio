@@ -274,3 +274,7 @@ dialog::backdrop { background: rgba(8,8,10,.72); }
 
 /* 效果字氣泡(排版預覽) */
 .bubble.sfx { background: none; box-shadow: none; border: none; color: #111; font-weight: 900; font-size: 1.35em; letter-spacing: .06em; transform: translate(-50%,-50%) rotate(-6deg); text-shadow: 1px 1px 0 #fff, -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff; }
+
+/* 效果圖層(排版工作台) */
+.ly-panel .fx { position: absolute; transform: translate(-50%,-50%); cursor: grab; }
+.ly-tools { display: flex; gap: .5rem; margin: .35rem 0 0; }
