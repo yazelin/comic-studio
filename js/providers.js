@@ -116,11 +116,19 @@ export async function generateImages({ provider, prompt, refDataURLs = [], count
   }
 
   if (type === 'gemini-web') {
+    // gemini-web 沒有尺寸參數(自動化網頁版),長寬比只能用 prompt 文字要求
+    const [w, hgt] = size.split('x').map(Number);
+    const aspect = w === hgt
+      ? '畫面為正方形(1:1)。'
+      : hgt > w
+        ? `畫面必須是直式構圖,長寬比 ${w}:${hgt},高度大於寬度(portrait)。`
+        : `畫面為橫式構圖,長寬比 ${w}:${hgt}(landscape)。`;
+    const finalPrompt = prompt + '\n' + aspect;
     const ref = await compositeRefs(refDataURLs);
     const results = [];
     for (let i = 0; i < count; i++) {
       onStatus(count > 1 ? `生成中 ${i + 1}/${count}…` : '生成中…');
-      const r = await doFetch(buildGeminiWebRequest({ baseurl, apiKey, prompt, refImagesB64: ref ? [ref] : [] }));
+      const r = await doFetch(buildGeminiWebRequest({ baseurl, apiKey, prompt: finalPrompt, refImagesB64: ref ? [ref] : [] }));
       if (!r.success) throw new Error(r.error || '生成失敗');
       results.push(...r.images);
     }
