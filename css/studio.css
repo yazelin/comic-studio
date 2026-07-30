@@ -271,3 +271,6 @@ dialog::backdrop { background: rgba(8,8,10,.72); }
 .bk-head { display: flex; align-items: center; gap: .6rem; margin-bottom: .35rem; }
 .bk-tag { font-size: .82rem; color: var(--dim); }
 .bk-tag.ok { color: var(--acc); }
+
+/* 效果字氣泡(排版預覽) */
+.bubble.sfx { background: none; box-shadow: none; border: none; color: #111; font-weight: 900; font-size: 1.35em; letter-spacing: .06em; transform: translate(-50%,-50%) rotate(-6deg); text-shadow: 1px 1px 0 #fff, -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff; }

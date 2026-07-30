@@ -57,6 +57,7 @@ async function editBubble(b) {
         { value: 'speech', label: '對白(白泡)' },
         { value: 'thought', label: '內心(虛線泡)' },
         { value: 'narration', label: '旁白(深色橫條)' },
+        { value: 'sfx', label: '效果字(畫進動作裡,不吃基準字體)' },
       ] },
       { key: 'w', label: '最大寬度(%)', value: String(b.w || 40) },
     ],

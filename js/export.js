@@ -99,6 +99,7 @@ body { background: #111114; color: #eee; font-family: "Noto Sans TC", "PingFang 
 .bubble { position: absolute; transform: translate(-50%, -50%); background: #fff; color: #111; padding: .5em .8em; border-radius: 1em; font-size: clamp(11px, 2.6vw, 17px); line-height: 1.45; max-width: 46%; box-shadow: 0 1px 4px rgba(0,0,0,.4); }
 .bubble.thought { border-radius: 2em; border: 2px dashed #555; }
 .bubble.narration { background: rgba(20,20,24,.85); color: #eee; border-radius: 4px; border-left: 3px solid #888; }
+.bubble.sfx { background: none; box-shadow: none; color: #111; font-weight: 900; font-size: clamp(20px, 5vw, 34px); letter-spacing: .06em; transform: translate(-50%,-50%) rotate(-6deg); text-shadow: 1px 1px 0 #fff, -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff; }
 .bubble .spk { display: block; font-size: .72em; color: #888; margin-bottom: .15em; }
 #progress-hint { text-align: center; color: #666; padding: 2rem 0; font-size: .85rem; }
 `;

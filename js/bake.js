@@ -57,6 +57,18 @@ async function renderPanel(p, st) {
   return wrap;
 }
 
+// 字體錨:本章 order 最小、已烙且有字的格(排除自己)——之後每格的字都照它畫,整章自動統一
+async function fontAnchor(excludeId) {
+  const sb = await data.loadStoryboard(app.chapter);
+  for (const p of sb.panels) {
+    if (p.id === excludeId) continue;
+    const st = await data.loadPanelState(app.chapter, p.id);
+    if (!st.bubbles.length) continue;
+    try { return 'data:image/png;base64,' + await store.readBlobB64(bakePath(app.chapter, p.id)); } catch { continue; }
+  }
+  return null;
+}
+
 // 烙一格。無字=直接複製選定圖;有字=image-edit 整張重繪。回傳 'copied'|'baked'|'skipped'
 async function bakeOne(p, st, force = false) {
   if (!force && await bakedURL(app.chapter, p.id)) return 'skipped';
@@ -69,10 +81,13 @@ async function bakeOne(p, st, force = false) {
   const provider = getProvider(app.meta?.providers.image);
   if (!provider) throw new Error('未設定生圖模型(到「專案」選擇)');
   const ref = 'data:image/png;base64,' + await store.readBlobB64(src);
+  const refs = [ref];
+  const anchor = await fontAnchor(p.id);
+  if (anchor) refs.push(anchor);
   const imgs = await generateImages({
     provider,
-    prompt: buildBakePrompt(st.bubbles),
-    refDataURLs: [ref],
+    prompt: buildBakePrompt(st.bubbles, { fontRef: !!anchor }),
+    refDataURLs: refs,
     count: 1,
     size: BAKE_SIZE,
     onStatus: m => setStatus('#bk-status', `格 ${p.order}:${m}`),

@@ -16,7 +16,8 @@ export function buildStoryboardPrompt(chapterText, characters = []) {
     '',
     '規則:',
     '- 只輸出一個 JSON 物件,不要任何其他文字。',
-    '- 格式: {"panels":[{"scene":"畫面場景與內容描述(給生圖模型,具體寫出環境、光線、動作)","characters":["出場角色 id"],"shot":"鏡頭(遠景/中景/特寫/俯視/仰視等)","dialogue":[{"speaker":"說話者名字或「旁白」","text":"台詞或旁白","type":"speech|thought|narration"}],"notes":"備註,可空字串"}]}',
+    '- sfx=效果字(擬聲/音效):只在原文明確有聲音事件時使用,text 限 1~4 字(如「轟」「叩叩」),整章最多兩三處,安靜的章節可以完全沒有。\n'
+    + '- 格式: {"panels":[{"scene":"畫面場景與內容描述(給生圖模型,具體寫出環境、光線、動作)","characters":["出場角色 id"],"shot":"鏡頭(遠景/中景/特寫/俯視/仰視等)","dialogue":[{"speaker":"說話者名字或「旁白」","text":"台詞或旁白","type":"speech|thought|narration|sfx"}],"notes":"備註,可空字串"}]}',
     '- 每格一個畫面,節奏照漫畫敘事:重要時刻給特寫、轉場給遠景。',
     '- 台詞從原文取材,可精簡,不可改變劇情。',
     '- 12 到 30 格之間,依內容長度決定。',
@@ -58,7 +59,7 @@ export function parseStoryboard(text) {
       ? p.dialogue.map(d => ({
           speaker: String(d.speaker || ''),
           text: String(d.text || ''),
-          type: ['speech', 'thought', 'narration'].includes(d.type) ? d.type : 'speech',
+          type: ['speech', 'thought', 'narration', 'sfx'].includes(d.type) ? d.type : 'speech',
         }))
       : [],
     notes: String(p.notes || ''),
@@ -101,6 +102,7 @@ const BAKE_STYLES = {
   speech: "a clean white rounded hand-drawn speech bubble with a thin dark outline and a small tail pointing toward the speaker's mouth, containing",
   thought: 'free-floating hand-lettered inner-monologue text with NO bubble and NO box, dark ink letters with a subtle soft white halo for legibility, reading',
   narration: 'a slim rectangular narration caption box with a plain dark background and clean white lettering, containing',
+  sfx: 'large expressive hand-drawn sound-effect lettering integrated into the artwork, its style, weight and distortion matched to the action in the scene (NOT bound to the base typeface), rendering',
 };
 
 function bakeRegion(x, y) {
@@ -109,14 +111,22 @@ function bakeRegion(x, y) {
   return `${vPos}-${hPos}`;
 }
 
-export function buildBakePrompt(bubbles) {
+export function buildBakePrompt(bubbles, { fontRef = false } = {}) {
   const parts = [...bubbles]
     .sort((a, b) => (a.y || 0) - (b.y || 0) || (a.x || 0) - (b.x || 0))
-    .map((b, i) => `(${i + 1}) in the ${bakeRegion(b.x ?? 50, b.y ?? 20)} area, ${BAKE_STYLES[b.type] || BAKE_STYLES.speech} exactly this Traditional Chinese text, horizontal, perfectly legible, every character stroke correct, full-width CJK punctuation, and nothing else: ${b.text}`);
-  return 'Use case: image-edit. Input images: Image 1: the finished comic panel artwork. '
+    .map((b, i) => `(${i + 1}) in the ${bakeRegion(b.x ?? 50, b.y ?? 20)} area, ${BAKE_STYLES[b.type] || BAKE_STYLES.speech} exactly this Traditional Chinese text, ${b.type === 'sfx' ? 'perfectly legible, every character stroke correct' : 'horizontal, perfectly legible, every character stroke correct, full-width CJK punctuation'}, and nothing else: ${b.text}`);
+  const inputs = fontRef
+    ? 'Image 1: the finished comic panel artwork. Image 2: a lettering style sample from the same book. '
+    : 'Image 1: the finished comic panel artwork. ';
+  // 基準字體管對白/內心/旁白;效果字=刻意破格,不吃基準(視覺設定 13)
+  const fontNote = ' LETTERING: all speech, thought and narration text uses one consistent clean rounded gothic manga typesetting'
+    + (fontRef ? ', matched exactly to the typeface look, weight and rendering of the lettering in image 2' : '')
+    + '; sound-effect lettering (if any) is exempt and follows the action instead.';
+  return 'Use case: image-edit. Input images: ' + inputs
     + `Primary request: redraw this exact panel as a finished webtoon comic panel WITH ${parts.length} pieces of text drawn into the image as part of the comic art: `
     + parts.join(' ')
     + ' Keep the artwork, colors, faces and composition of image 1 unchanged apart from adding these text elements.'
+    + fontNote
     + ' All lettering must look hand-typeset as part of the comic page, not a computer UI overlay.'
     + ' Do NOT add any corner brackets or quotation marks unless they appear in the given text. No other text anywhere.';
 }
