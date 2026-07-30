@@ -45,6 +45,7 @@
   <label class="inline"><input type="checkbox" id="remember-keys"> 記住(含 key)於此瀏覽器</label>
   <button id="save-providers" class="primary">儲存設定</button>
   <p class="hint">類型說明:codex-image-service 與 gemini-web 是可自架的開源服務(見 README);OpenAI 相容則填 baseurl / model / key 即可,例如 OpenAI 官方或任何相容閘道。</p>
+  <p class="hint">不想在網頁上填 key?在專案資料夾放一個 <code>keys.json</code>:<code>{"provider 名稱": "key"}</code>,開專案時自動帶入(只進記憶體)。若專案資料夾有 git 版控,記得把 keys.json 加進 .gitignore。</p>
 </section>
 
 <!-- 章節分鏡 -->

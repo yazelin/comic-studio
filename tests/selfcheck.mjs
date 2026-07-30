@@ -92,4 +92,12 @@ const chatO = buildChatRequest({ type: 'openai-compatible', baseurl: 'https://x/
 assert.equal(chatO.url, 'https://x/v1/chat/completions');
 assert.equal(JSON.parse(chatO.body).messages[0].content, 'hi');
 
+// ── applyProjectKeys(keys.json 帶入,只進記憶體)──
+globalThis.localStorage = { getItem: () => null, setItem: () => {}, removeItem: () => {} };
+const { applyProjectKeys, loadProviders } = await import('../js/providers.js');
+const n = applyProjectKeys({ 'gemini-web': 'K1', '不存在的': 'K2', 'codex-image-service': '' });
+assert.equal(n, 1, '只套用名稱吻合且非空的 key');
+assert.equal(loadProviders().find(p => p.name === 'gemini-web').apiKey, 'K1');
+assert.equal(applyProjectKeys(null), 0, 'keys.json 不存在要安靜略過');
+
 console.log('selfcheck: 全部通過');

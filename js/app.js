@@ -2,7 +2,7 @@
 import { $, h, toast } from './ui.js';
 import * as store from './store.js';
 import * as data from './data.js';
-import { loadProviders, saveProviders, isPersisted } from './providers.js';
+import { loadProviders, saveProviders, isPersisted, applyProjectKeys } from './providers.js';
 import { refreshStoryboard } from './storyboard.js';
 import { refreshCharacters } from './characters.js';
 import { refreshGenerate } from './generate.js';
@@ -38,9 +38,10 @@ $('#open-project').onclick = async () => {
     $('#project-badge').textContent = '專案:' + name;
     app.meta = await data.loadMeta();
     if (!app.meta.title) app.meta.title = name;
+    const nKeys = applyProjectKeys(await store.readJSON('keys.json', null));
     fillProjectForm();
     $('#project-form').hidden = false;
-    toast('專案已開啟');
+    toast(nKeys ? `專案已開啟(keys.json 帶入 ${nKeys} 把 key)` : '專案已開啟');
   } catch (e) {
     if (e.name !== 'AbortError') toast('開啟失敗:' + e.message);
   }

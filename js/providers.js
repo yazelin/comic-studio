@@ -38,6 +38,20 @@ export function saveProviders(list, remember) {
 
 export function isPersisted() { return persist; }
 
+// 專案資料夾的 keys.json({"provider 名稱": "key"})→ 只進記憶體,不進 localStorage。
+// 回傳套用到幾個 provider。
+export function applyProjectKeys(map) {
+  if (!map || typeof map !== 'object') return 0;
+  let n = 0;
+  for (const p of loadProviders()) {
+    if (typeof map[p.name] === 'string' && map[p.name]) {
+      p.apiKey = map[p.name];
+      n += 1;
+    }
+  }
+  return n;
+}
+
 export function getProvider(name) {
   return loadProviders().find(p => p.name === name) || null;
 }

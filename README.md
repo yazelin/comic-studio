@@ -27,6 +27,13 @@
 | `gemini-web` | [自架的 Gemini 網頁自動化服務](https://github.com/yazelin/gemini-web) | 是（單參考圖；多張會自動併圖） | 是 |
 
 - API key **預設只留在記憶體**，關分頁即消失；勾「記住」才寫入瀏覽器儲存空間。共用電腦請勿勾選。
+- **推薦：key 放專案資料夾**。在專案根目錄放 `keys.json`（等同 .env 的角色），開專案時自動帶入、只進記憶體，不碰瀏覽器儲存空間：
+
+  ```json
+  { "codex-image-service": "你的key", "gemini-web": "你的key" }
+  ```
+
+  鍵名＝「模型設定」頁的 provider 名稱。專案資料夾若有 git 版控，請把 `keys.json` 加進 `.gitignore`。
 - 所有請求由你的瀏覽器直接打到你填的端點，本站沒有伺服器、不經手任何資料。
 - 自架服務要在服務端允許本站來源的 CORS（兩個服務的新版都有 `CORS_ALLOW_ORIGINS` 類環境變數；見各自 README）。
 
