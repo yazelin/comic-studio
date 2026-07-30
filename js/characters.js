@@ -46,14 +46,14 @@ $('#add-char').onclick = async () => {
   const r = await modal({
     title: '新增角色',
     fields: [
-      { key: 'id', label: 'id(英文小寫,分鏡腳本用它指涉角色)', placeholder: 'yaze' },
-      { key: 'name', label: '名字', placeholder: '亞澤' },
+      { key: 'id', label: 'id(分鏡腳本用它指涉角色,中文可以,建議直接用角色名)', placeholder: '亞澤' },
+      { key: 'name', label: '顯示名字(留空=同 id)', placeholder: '亞澤' },
       { key: 'card', label: '外觀設定卡', type: 'textarea', placeholder: '黑髮微亂,深色皮外套…' },
     ],
     confirmText: '建立',
   });
   if (!r) return;
-  if (!/^[a-z0-9-]+$/.test(r.id)) { toast('id 限英文小寫/數字/連字號'); return; }
+  if (!r.id || /[/\\]/.test(r.id)) { toast('id 不能空白或含斜線'); return; }
   await data.saveCharacter({ id: r.id, name: r.name || r.id, card: r.card || '' });
   refreshCharacters();
 };
