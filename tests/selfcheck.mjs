@@ -100,4 +100,17 @@ assert.equal(n, 1, '只套用名稱吻合且非空的 key');
 assert.equal(loadProviders().find(p => p.name === 'gemini-web').apiKey, 'K1');
 assert.equal(applyProjectKeys(null), 0, 'keys.json 不存在要安靜略過');
 
+// ── extractChapterFromHTML(從閱讀頁抽正文)──
+const { extractChapterFromHTML } = await import('../js/import.js');
+const html = `<html><head><title>第一章：測試 &amp; 火球</title><style>p{color:red}</style></head>
+<body><p>頁面選單不該被抓</p><main><script>var x=1;</script>
+<p>森林比他想的深。</p><p><em>強調</em>也要保留文字</p><p>  </p><p>&#x300C;引號&#x300D;&amp;符號</p></main></body></html>`;
+const ch = extractChapterFromHTML(html);
+assert.equal(ch.title, '第一章：測試 & 火球');
+assert.equal(ch.text.split('\n\n').length, 3, '空段落要略過、main 外的 p 不抓');
+assert.ok(ch.text.startsWith('森林比他想的深。'));
+assert.ok(ch.text.includes('強調也要保留文字'));
+assert.ok(ch.text.includes('「引號」&符號'), '實體要解碼');
+assert.throws(() => extractChapterFromHTML('<html><body><div>沒有段落</div></body></html>'), /段落/);
+
 console.log('selfcheck: 全部通過');

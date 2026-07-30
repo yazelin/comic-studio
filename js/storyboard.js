@@ -26,6 +26,25 @@ async function loadChapter() {
   renderPanels();
 }
 
+$('#sb-import').onclick = async () => {
+  const url = $('#sb-url').value.trim();
+  if (!url) { toast('先貼章節頁網址'); return; }
+  if (!store.hasProject()) { toast('請先在「專案」開啟資料夾'); return; }
+  try {
+    setStatus('#sb-status', '抓取網頁…');
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const { extractChapterFromHTML } = await import('./import.js');
+    const { title, text } = extractChapterFromHTML(await res.text());
+    dir = await data.newChapter(title || url.split('/').pop());
+    await store.writeText(data.chapterPath(dir, 'source.md'), text);
+    await refreshStoryboard();
+    setStatus('#sb-status', `已匯入「${title}」:${text.length} 字(原文已存檔)`);
+  } catch (e) {
+    setStatus('#sb-status', '匯入失敗:' + e.message + '(跨站網址需對方允許 CORS;同在 yazelin.github.io 的頁一定可以)', true);
+  }
+};
+
 $('#sb-new-chapter').onclick = async () => {
   const title = prompt('章節標題?');
   if (!title) return;
