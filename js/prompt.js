@@ -130,3 +130,17 @@ export function buildBakePrompt(bubbles, { fontRef = false } = {}) {
     + ' All lettering must look hand-typeset as part of the comic page, not a computer UI overlay.'
     + ' Do NOT add any corner brackets or quotation marks unless they appear in the given text. No other text anywhere.';
 }
+
+// ── 效果圖層(fx):生成可疊在格圖上的獨立效果元素 ──
+// 不追求真 alpha:墨模式=純白底(疊圖時 mix-blend-mode:multiply,白=透明);
+// 光模式=純黑底(mix-blend-mode:screen,黑=透明)。CSS 合成,免摳圖。
+export function buildEffectPrompt({ desc, mode = 'ink', style = '' }) {
+  const bg = mode === 'light'
+    ? 'on a PURE SOLID BLACK (#000000) background. The element itself is bright/glowing; everything that should be transparent must be pure black (it will be composited with screen blending, black becomes invisible).'
+    : 'on a PURE SOLID WHITE (#FFFFFF) background. The element itself is dark ink; everything that should be transparent must be pure white (it will be composited with multiply blending, white becomes invisible).';
+  return `A single isolated comic effect element, ${bg} `
+    + `The element: ${desc}. `
+    + (style ? `Match the comic's overall art style: ${style}. ` : '')
+    + 'Centered with generous empty margin around it, no scene, no background objects, no frame, no border. '
+    + 'If the description asks for effect lettering, draw the exact given characters with every stroke correct; otherwise no text at all. No watermark.';
+}

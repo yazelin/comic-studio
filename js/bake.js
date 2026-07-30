@@ -146,7 +146,15 @@ $('#do-export').onclick = async () => {
         const blob = await (await fetch(url)).blob();
         const path = `imgs/ch${ch.dir}-${p.id}.png`;
         imageBlobs.push({ path, blob });
-        panels.push({ image: path, bubbles });
+        const effects = [];
+        for (const [fi, fx] of (st.effects || []).entries()) {
+          const fu = await data.panelImageURL(ch.dir, p.id, fx.image);
+          if (!fu) continue;
+          const fpath = `imgs/ch${ch.dir}-${p.id}-fx${fi + 1}.png`;
+          imageBlobs.push({ path: fpath, blob: await (await fetch(fu)).blob() });
+          effects.push({ ...fx, image: fpath });
+        }
+        panels.push({ image: path, bubbles, effects });
       }
       if (panels.length) chapters.push({ title: ch.title, panels });
     }
