@@ -150,3 +150,16 @@ assert.ok(bp.includes('NO bubble'), '內心=無框浮字');
 assert.ok(bp.includes('narration caption box'), '旁白=深底條');
 assert.ok(bp.includes('bottom-left') && bp.includes('top-right') && bp.includes('top-left'), '方位對映');
 console.log('buildBakePrompt ok');
+
+// ── sfx+字體錨 ──
+const bs = buildBakePrompt([
+  { x: 50, y: 50, type: 'sfx', text: '轟' },
+  { x: 10, y: 10, type: 'narration', text: '然後是安靜。' },
+], { fontRef: true });
+assert.ok(bs.includes('sound-effect lettering'), 'sfx=效果字指令');
+assert.ok(bs.includes('Image 2'), 'fontRef 要提到樣本圖');
+assert.ok(bs.includes('matched exactly'), '基準字體要鎖樣本');
+assert.ok(bs.includes('exempt'), '效果字不吃基準');
+const sbx = parseStoryboard(JSON.stringify({ panels: [{ scene: 'x', dialogue: [{ speaker: '', text: '轟', type: 'sfx' }] }] }));
+assert.equal(sbx.panels[0].dialogue[0].type, 'sfx', '分鏡解析要收 sfx');
+console.log('sfx+fontRef ok');
