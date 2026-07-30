@@ -111,10 +111,12 @@ $('#ly-fill').onclick = async () => {
         w: 40, type: d.type, speaker: d.speaker === '旁白' ? '' : d.speaker, text: d.text,
       });
     });
+    // 先落檔再重繪——render() 會從磁碟重讀 panel.json,不先存會被蓋掉
+    await data.savePanelState(dir, p.id, st);
     filled += 1;
   }
   await render();
-  toast(`已帶入 ${filled} 格的對白`);
+  toast(`已帶入 ${filled} 格的對白(已存檔)`);
 };
 
 $('#ly-save').onclick = async () => {
