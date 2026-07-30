@@ -8,6 +8,19 @@ import { app, requireProject, refreshChapters } from './app.js';
 
 let sb = { panels: [] };
 
+// 自動暫存:任何編輯 1.2 秒後落檔,不再依賴手按「儲存分鏡」
+let autosaveTimer;
+function autosave() {
+  clearTimeout(autosaveTimer);
+  autosaveTimer = setTimeout(async () => {
+    if (!app.chapter) return;
+    sb.panels.forEach((p, i) => { p.order = i + 1; });
+    await data.saveStoryboard(app.chapter, sb);
+    await store.writeText(data.chapterPath(app.chapter, 'source.md'), $('#sb-source')?.value ?? '');
+    setStatus('#sb-status', '已自動儲存');
+  }, 1200);
+}
+
 export async function refreshStoryboard() {
   const body = $('#sb-body');
   if (!requireProject(body)) return;
@@ -18,7 +31,7 @@ export async function refreshStoryboard() {
         h('input', { id: 'sb-url', placeholder: '從網址匯入:貼章節閱讀頁網址,自動建章節+抓標題+抽正文', style: { flex: '1', minWidth: '240px', marginTop: '0' } }),
         h('button', { id: 'sb-import', onclick: importFromURL }, '匯入'),
       ),
-      h('label', {}, '章節原文', h('textarea', { id: 'sb-source', rows: 8, placeholder: '把整章小說文字貼進來,或用上面的網址匯入…' })),
+      h('label', {}, '章節原文', h('textarea', { id: 'sb-source', rows: 8, oninput: autosave, placeholder: '把整章小說文字貼進來,或用上面的網址匯入…' })),
       h('div', { class: 'actions' },
         h('button', { onclick: saveSource }, '儲存原文'),
         h('button', { class: 'primary', onclick: aiStoryboard }, 'AI 產生分鏡'),
@@ -90,6 +103,7 @@ function addPanel() {
   if (!app.chapter) { toast('先在右上角新增章節'); return; }
   sb.panels.push({ id: 'p' + Date.now().toString(36), order: sb.panels.length + 1, scene: '', characters: [], shot: '中景', dialogue: [], notes: '' });
   renderPanels();
+  autosave();
 }
 
 async function saveStoryboard() {
@@ -104,6 +118,7 @@ function move(i, delta) {
   if (j < 0 || j >= sb.panels.length) return;
   [sb.panels[i], sb.panels[j]] = [sb.panels[j], sb.panels[i]];
   renderPanels();
+  autosave();
 }
 
 function renderPanels() {
@@ -115,26 +130,26 @@ function renderPanels() {
       h('span', { class: 'spacer' }),
       h('button', { class: 'icon-btn', onclick: () => move(i, -1), title: '上移' }, '↑'),
       h('button', { class: 'icon-btn', onclick: () => move(i, 1), title: '下移' }, '↓'),
-      h('button', { class: 'danger icon-btn', onclick: () => { sb.panels.splice(i, 1); renderPanels(); } }, '刪'),
+      h('button', { class: 'danger icon-btn', onclick: () => { sb.panels.splice(i, 1); renderPanels(); autosave(); } }, '刪'),
     ),
-    h('label', {}, '畫面描述', h('textarea', { rows: 2, oninput: e => { p.scene = e.target.value; } }, p.scene)),
+    h('label', {}, '畫面描述', h('textarea', { rows: 2, oninput: e => { p.scene = e.target.value; autosave(); } }, p.scene)),
     h('div', { class: 'sb-grid' },
-      h('label', {}, '出場角色(id,逗號分隔)', h('input', { value: p.characters.join(','), oninput: e => { p.characters = e.target.value.split(/[,、\s]+/).filter(Boolean); } })),
-      h('label', {}, '鏡頭', h('input', { value: p.shot, oninput: e => { p.shot = e.target.value; } })),
-      h('label', {}, '備註', h('input', { value: p.notes, oninput: e => { p.notes = e.target.value; } })),
+      h('label', {}, '出場角色(id,逗號分隔)', h('input', { value: p.characters.join(','), oninput: e => { p.characters = e.target.value.split(/[,、\s]+/).filter(Boolean); autosave(); } })),
+      h('label', {}, '鏡頭', h('input', { value: p.shot, oninput: e => { p.shot = e.target.value; autosave(); } })),
+      h('label', {}, '備註', h('input', { value: p.notes, oninput: e => { p.notes = e.target.value; autosave(); } })),
     ),
     h('div', {},
       ...p.dialogue.map((d, di) => h('div', { class: 'dlg-row' },
-        h('input', { value: d.speaker, placeholder: '說話者', oninput: e => { d.speaker = e.target.value; } }),
-        h('input', { value: d.text, placeholder: '台詞', oninput: e => { d.text = e.target.value; } }),
-        h('select', { onchange: e => { d.type = e.target.value; } },
+        h('input', { value: d.speaker, placeholder: '說話者', oninput: e => { d.speaker = e.target.value; autosave(); } }),
+        h('input', { value: d.text, placeholder: '台詞', oninput: e => { d.text = e.target.value; autosave(); } }),
+        h('select', { onchange: e => { d.type = e.target.value; autosave(); } },
           h('option', { value: 'speech', selected: d.type === 'speech' }, '對白'),
           h('option', { value: 'thought', selected: d.type === 'thought' }, '內心'),
           h('option', { value: 'narration', selected: d.type === 'narration' }, '旁白'),
         ),
-        h('button', { class: 'danger icon-btn', onclick: () => { p.dialogue.splice(di, 1); renderPanels(); } }, '刪'),
+        h('button', { class: 'danger icon-btn', onclick: () => { p.dialogue.splice(di, 1); renderPanels(); autosave(); } }, '刪'),
       )),
-      h('button', { class: 'icon-btn', onclick: () => { p.dialogue.push({ speaker: '', text: '', type: 'speech' }); renderPanels(); } }, '＋台詞'),
+      h('button', { class: 'icon-btn', onclick: () => { p.dialogue.push({ speaker: '', text: '', type: 'speech' }); renderPanels(); autosave(); } }, '＋台詞'),
     ),
   )));
 }

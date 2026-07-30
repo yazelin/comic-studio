@@ -65,28 +65,40 @@ $('#new-chapter').onclick = async () => {
 };
 
 // ── 專案站 ──
-function renderProject() {
+async function renderProject() {
   const empty = $('#project-empty');
   if (store.hasProject()) { empty.replaceChildren(); return; }
-  empty.replaceChildren(emptyState('選一個資料夾當專案——新資料夾或既有專案都可以。', '開啟 / 建立專案資料夾', openProject));
+  const saved = await store.savedProjectName().catch(() => null);
+  if (saved) {
+    const box = emptyState(`上次開的專案:${saved}。重新整理後瀏覽器需要你再點一次授權。`, `重新開啟「${saved}」`, async () => {
+      try { await afterOpen(await store.restoreProject()); } catch (e) { toast(e.message); }
+    });
+    box.append(h('button', { style: { marginTop: '.6rem' }, onclick: openProject }, '開啟其他資料夾'));
+    empty.replaceChildren(box);
+  } else {
+    empty.replaceChildren(emptyState('選一個資料夾當專案——新資料夾或既有專案都可以。', '開啟 / 建立專案資料夾', openProject));
+  }
 }
 
 async function openProject() {
   if (!window.showDirectoryPicker) { toast('此瀏覽器不支援 File System Access,請用 Chrome / Edge'); return; }
   try {
-    const name = await store.openProject();
-    $('#project-badge').textContent = name;
-    app.meta = await data.loadMeta();
-    if (!app.meta.title) app.meta.title = name;
-    const nKeys = applyProjectKeys(await store.readJSON('keys.json', null));
-    fillProjectForm();
-    $('#project-form').hidden = false;
-    renderProject();
-    await refreshChapters();
-    toast(nKeys ? `專案已開啟(keys.json 帶入 ${nKeys} 把 key)` : '專案已開啟');
+    await afterOpen(await store.openProject());
   } catch (e) {
     if (e.name !== 'AbortError') toast('開啟失敗:' + e.message);
   }
+}
+
+async function afterOpen(name) {
+  $('#project-badge').textContent = name;
+  app.meta = await data.loadMeta();
+  if (!app.meta.title) app.meta.title = name;
+  const nKeys = applyProjectKeys(await store.readJSON('keys.json', null));
+  fillProjectForm();
+  $('#project-form').hidden = false;
+  renderProject();
+  await refreshChapters();
+  toast(nKeys ? `專案已開啟(keys.json 帶入 ${nKeys} 把 key)` : '專案已開啟');
 }
 
 function providerOptions(sel, chosen) {
