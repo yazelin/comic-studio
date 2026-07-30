@@ -94,13 +94,13 @@ body { background: #111114; color: #eee; font-family: "Noto Sans TC", "PingFang 
 #toc a { display: block; padding: .8rem 1rem; color: #eee; text-decoration: none; border-bottom: 1px solid #26262c; font-size: 1.05rem; }
 #stage { max-width: 720px; margin: 0 auto; padding-bottom: 4rem; }
 .chapter-title { padding: 2.2rem 1rem 1.2rem; font-size: 1.2rem; font-weight: 700; color: #bbb; }
-.panel { position: relative; margin: 0 0 6px; }
+.panel { position: relative; margin: 0 0 6px; container-type: inline-size; }
 .panel > img { display: block; width: 100%; height: auto; }
 .fx { position: absolute; transform: translate(-50%, -50%); pointer-events: none; }
-.bubble { position: absolute; transform: translate(-50%, -50%); background: #fff; color: #111; padding: .5em .8em; border-radius: 1em; font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif; font-size: clamp(11px, 2.6vw, 17px); line-height: 1.6; letter-spacing: .02em; max-width: 46%; box-shadow: 0 1px 4px rgba(0,0,0,.35); }
+.bubble { position: absolute; transform: translate(-50%, -50%); background: #fff; color: #111; padding: .5em .8em; border-radius: 1em; font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif; font-size: clamp(13px, 3.4cqw, 22px); line-height: 1.6; letter-spacing: .02em; max-width: 46%; box-shadow: 0 1px 4px rgba(0,0,0,.35); }
 .bubble.thought { background: none; box-shadow: none; border: none; color: #1c1a17; font-weight: 500; text-shadow: 0 0 6px #fff, 0 0 3px #fff, 0 0 1px #fff, 0 0 10px rgba(255,255,255,.8); }
 .bubble.narration { background: rgba(16,16,20,.72); color: #f2f0ea; border-radius: 3px; border: none; padding: .55em .9em; font-weight: 400; }
-.bubble.sfx { background: none; box-shadow: none; color: #111; font-weight: 900; font-size: clamp(20px, 5vw, 34px); letter-spacing: .06em; transform: translate(-50%,-50%) rotate(-6deg); text-shadow: 1px 1px 0 #fff, -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff; }
+.bubble.sfx { background: none; box-shadow: none; color: #111; font-weight: 900; font-size: clamp(22px, 7cqw, 44px); letter-spacing: .06em; transform: translate(-50%,-50%) rotate(-6deg); text-shadow: 1px 1px 0 #fff, -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff; }
 .bubble .spk { display: block; font-size: .72em; color: #888; margin-bottom: .15em; }
 #progress-hint { text-align: center; color: #666; padding: 2rem 0; font-size: .85rem; }
 `;

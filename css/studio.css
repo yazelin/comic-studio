@@ -209,13 +209,13 @@ button:disabled { opacity: .45; cursor: default; }
 .progress-label { color: var(--dim); font-size: .82rem; white-space: nowrap; }
 
 /* ── 排版氣泡 ── */
-.ly-panel { position: relative; margin: 1rem 0; max-width: 660px; }
+.ly-panel { position: relative; margin: 1rem 0; max-width: 660px; container-type: inline-size; }
 .ly-panel img { display: block; width: 100%; border-radius: 7px; }
 .ly-panel .pnum { position: absolute; top: -0.7rem; left: -0.4rem; z-index: 2; font-weight: 800; font-size: .78rem; background: var(--ink); border: 1.5px solid var(--fg); border-radius: 4px; padding: 0 .45em; box-shadow: 2px 2px 0 0 #d9482b55; }
 .bubble {
   position: absolute; transform: translate(-50%, -50%);
   background: #fff; color: #111; padding: .45em .7em; border-radius: 1em;
-  font-size: 14px; line-height: 1.4; max-width: 46%;
+  font-size: clamp(13px, 3.4cqw, 22px); line-height: 1.4; max-width: 46%;
   cursor: grab; user-select: none; box-shadow: 0 1px 4px rgba(0,0,0,.5);
 }
 .bubble.thought { background: none; box-shadow: none; border: none; color: #1c1a17; font-weight: 500; text-shadow: 0 0 6px #fff, 0 0 3px #fff, 0 0 1px #fff, 0 0 10px rgba(255,255,255,.8); }
