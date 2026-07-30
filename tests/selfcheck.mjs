@@ -1,6 +1,6 @@
 // node tests/selfcheck.mjs — 純邏輯自我檢查,全綠才算過
 import assert from 'node:assert/strict';
-import { buildStoryboardPrompt, parseStoryboard, buildPanelPrompt } from '../js/prompt.js';
+import { buildStoryboardPrompt, parseStoryboard, buildPanelPrompt, buildBakePrompt } from '../js/prompt.js';
 import { buildReaderFiles } from '../js/export.js';
 import { buildCodexRequest, buildGeminiWebRequest, buildOpenAIImageRequest, buildChatRequest } from '../js/providers-core.js';
 
@@ -134,3 +134,19 @@ assert.deepEqual(msb.panels[1].characters, ['yaze', '神官']);
 assert.deepEqual(msb.panels[2].characters, ['神官'], '無關格不動');
 
 console.log('selfcheck: 全部通過');
+
+// ── buildBakePrompt(匯出重繪) ──
+const bp = buildBakePrompt([
+  { x: 10, y: 80, type: 'thought', text: '我好像自由了。' },
+  { x: 70, y: 10, type: 'narration', text: '然後是安靜。' },
+  { x: 10, y: 12, type: 'speech', text: '⋯⋯好喔。' },
+]);
+assert.ok(bp.includes('image-edit'), '要是 image-edit 指令');
+assert.ok(bp.includes('3 pieces of text'), '要含正確段數');
+assert.ok(bp.indexOf('然後是安靜。') < bp.indexOf('⋯⋯好喔。'), 'y 小的先(10<12)');
+assert.ok(bp.indexOf('⋯⋯好喔。') < bp.indexOf('我好像自由了。'), '由上而下');
+assert.ok(bp.includes('speech bubble'), '對白=白泡');
+assert.ok(bp.includes('NO bubble'), '內心=無框浮字');
+assert.ok(bp.includes('narration caption box'), '旁白=深底條');
+assert.ok(bp.includes('bottom-left') && bp.includes('top-right') && bp.includes('top-left'), '方位對映');
+console.log('buildBakePrompt ok');

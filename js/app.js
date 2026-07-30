@@ -7,6 +7,7 @@ import { refreshStoryboard } from './storyboard.js';
 import { refreshCharacters } from './characters.js';
 import { refreshGenerate } from './generate.js';
 import { refreshLayout } from './layout.js';
+import { refreshBake } from './bake.js';
 
 export const app = { meta: null, chapter: '' }; // 全站共享:專案 meta+目前章節
 
@@ -15,6 +16,7 @@ const refreshers = {
   characters: refreshCharacters,
   generate: refreshGenerate,
   layout: refreshLayout,
+  bake: refreshBake,
   settings: renderSettings,
   project: renderProject,
 };

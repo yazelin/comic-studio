@@ -1,8 +1,6 @@
-// 排版匯出站:氣泡編輯(拖曳/雙擊 modal)+匯出 PWA 電子書
+// 排版站:氣泡編輯(拖曳/雙擊 modal)。只管字的內容+大概位置;匯出在 bake.js。
 import { $, h, toast, setStatus, modal, emptyState } from './ui.js';
-import * as store from './store.js';
 import * as data from './data.js';
-import { buildReaderFiles } from './export.js';
 import { app, requireProject } from './app.js';
 
 let panelStates = new Map(); // panelId -> {chosen, bubbles}
@@ -132,54 +130,3 @@ $('#ly-save').onclick = async () => {
   for (const [pid, st] of panelStates) await data.savePanelState(app.chapter, pid, st);
   setStatus('#ly-status', '氣泡已儲存');
 };
-
-// ── 匯出 ──
-$('#do-export').onclick = async () => {
-  if (!app.meta) { toast('請先開啟專案'); return; }
-  try {
-    setStatus('#export-status', '收集章節資料…');
-    const chapters = [];
-    const imageBlobs = [];
-    for (const ch of await data.listChapters()) {
-      const sb = await data.loadStoryboard(ch.dir);
-      const panels = [];
-      for (const p of sb.panels) {
-        const st = await data.loadPanelState(ch.dir, p.id);
-        if (!st.chosen) continue;
-        const url = await data.panelImageURL(ch.dir, p.id, st.chosen);
-        if (!url) continue;
-        const blob = await (await fetch(url)).blob();
-        const path = `imgs/ch${ch.dir}-${p.id}.png`;
-        imageBlobs.push({ path, blob });
-        panels.push({ image: path, bubbles: st.bubbles });
-      }
-      if (panels.length) chapters.push({ title: ch.title, panels });
-    }
-    if (!chapters.length) { setStatus('#export-status', '沒有任何已選定格圖,無可匯出', true); return; }
-
-    setStatus('#export-status', '寫入 dist/ …');
-    const files = buildReaderFiles({ title: app.meta.title, chapters });
-    for (const f of files) await store.writeText('dist/' + f.path, f.content);
-    for (const im of imageBlobs) await store.writeBlob('dist/' + im.path, im.blob);
-    for (const size of [192, 512]) await store.writeBlob(`dist/icon-${size}.png`, await makeIcon(app.meta.title, size));
-
-    const total = files.length + imageBlobs.length + 2;
-    setStatus('#export-status', `完成:dist/ 共 ${total} 個檔、${chapters.length} 章。丟到任何靜態空間即可離線閱讀。`);
-  } catch (e) {
-    setStatus('#export-status', '匯出失敗:' + e.message, true);
-  }
-};
-
-function makeIcon(title, size) {
-  const c = document.createElement('canvas');
-  c.width = c.height = size;
-  const ctx = c.getContext('2d');
-  ctx.fillStyle = '#101013';
-  ctx.fillRect(0, 0, size, size);
-  ctx.fillStyle = '#eceae4';
-  ctx.font = `700 ${size * 0.55}px "Noto Sans TC", sans-serif`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText((title || '漫').slice(0, 1), size / 2, size / 2 + size * 0.03);
-  return new Promise(ok => c.toBlob(ok, 'image/png'));
-}

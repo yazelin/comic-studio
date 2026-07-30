@@ -262,3 +262,12 @@ dialog::backdrop { background: rgba(8,8,10,.72); }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
 }
+
+/* ── 匯出站(bake) ── */
+.bk-strip { max-width: 520px; margin: 0 auto; }
+.bk-panel { margin-bottom: 1.2rem; }
+.bk-panel img { display: block; width: 100%; border-radius: 8px; cursor: zoom-in; }
+.bk-panel img.bk-dim { opacity: .45; }
+.bk-head { display: flex; align-items: center; gap: .6rem; margin-bottom: .35rem; }
+.bk-tag { font-size: .82rem; color: var(--dim); }
+.bk-tag.ok { color: var(--acc); }
