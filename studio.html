@@ -4,109 +4,105 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>comic-studio 工作台</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='18' fill='%23111114'/><text x='50' y='68' font-size='52' text-anchor='middle' fill='%23eee'>漫</text></svg>">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='18' fill='%23101013'/><text x='50' y='68' font-size='52' text-anchor='middle' fill='%23eceae4'>漫</text></svg>">
 <link rel="stylesheet" href="css/studio.css">
 </head>
 <body>
 <header id="topbar">
-  <strong>comic-studio</strong>
-  <nav id="tabs">
-    <button data-tab="project" class="active">專案</button>
-    <button data-tab="settings">模型設定</button>
-    <button data-tab="storyboard">章節分鏡</button>
-    <button data-tab="characters">角色庫</button>
-    <button data-tab="generate">生圖</button>
-    <button data-tab="layout">排版匯出</button>
-  </nav>
-  <span id="project-badge">未開啟專案</span>
+  <a class="wordmark" href="./"><span class="mark">漫</span>comic-studio</a>
+  <span id="project-badge" class="badge">未開啟專案</span>
+  <div class="chapter-ctl">
+    <label for="global-chapter">章節</label>
+    <select id="global-chapter"><option value="">—</option></select>
+    <button id="new-chapter" title="新增章節">＋</button>
+  </div>
 </header>
 
+<nav id="steps">
+  <button data-tab="project" class="step active"><span class="no">1</span><span class="t">專案</span></button>
+  <button data-tab="settings" class="step"><span class="no">2</span><span class="t">模型</span></button>
+  <button data-tab="storyboard" class="step"><span class="no">3</span><span class="t">分鏡</span></button>
+  <button data-tab="characters" class="step"><span class="no">4</span><span class="t">角色</span></button>
+  <button data-tab="generate" class="step"><span class="no">5</span><span class="t">生圖</span></button>
+  <button data-tab="layout" class="step"><span class="no">6</span><span class="t">排版匯出</span></button>
+</nav>
+
 <main>
-<!-- 專案 -->
+<!-- 1 專案 -->
 <section id="tab-project" class="tab active">
-  <h2>專案</h2>
-  <p class="hint">專案是你電腦上的一個資料夾,所有文字、分鏡、圖片都存在裡面(可自行 git 版控)。需要 Chrome / Edge 等 Chromium 瀏覽器。</p>
-  <button id="open-project" class="primary">開啟 / 建立專案資料夾</button>
+  <header class="tab-head"><h2>專案</h2><p>專案是你電腦上的一個資料夾;文字、分鏡、圖片全部存在裡面,可自行備份或 git 版控。需要 Chrome / Edge 等 Chromium 瀏覽器。</p></header>
+  <div id="project-empty"></div>
   <div id="project-form" hidden>
-    <label>作品標題<input id="p-title" placeholder="轉生異世界的我 token 無限"></label>
-    <label>全域畫風(每格生圖都會帶上)<textarea id="p-style" rows="3" placeholder="黑白日式漫畫風格,精細線稿,網點陰影,高對比"></textarea></label>
-    <label>預設生圖模型<select id="p-image-provider"></select></label>
-    <label>預設文字模型(分鏡用)<select id="p-text-provider"></select></label>
-    <button id="save-project" class="primary">儲存專案設定</button>
+    <div class="card">
+      <label>作品標題<input id="p-title" placeholder="轉生異世界的我 token 無限"></label>
+      <label>全域畫風<span class="sub">每一格生圖都會帶上這句,值得琢磨</span><textarea id="p-style" rows="3" placeholder="黑白日式漫畫風格,精細線稿,網點陰影,高對比"></textarea></label>
+      <div class="grid2">
+        <label>生圖模型<select id="p-image-provider"></select></label>
+        <label>文字模型(分鏡用)<select id="p-text-provider"></select></label>
+      </div>
+      <div class="actions"><button id="save-project" class="primary">儲存專案設定</button></div>
+    </div>
   </div>
 </section>
 
-<!-- 模型設定 -->
+<!-- 2 模型 -->
 <section id="tab-settings" class="tab">
-  <h2>模型設定</h2>
-  <p class="hint">每一列是一個可用的 API 端點:自架服務或任何 OpenAI 相容 API。key 預設只留在記憶體,關閉分頁即消失;勾「記住」才會存進瀏覽器(此網域與其他 Pages 專案共用儲存空間,共用電腦請勿勾選)。</p>
-  <div id="provider-list"></div>
-  <button id="add-provider">新增一列</button>
-  <label class="inline"><input type="checkbox" id="remember-keys"> 記住(含 key)於此瀏覽器</label>
-  <button id="save-providers" class="primary">儲存設定</button>
-  <p class="hint">類型說明:codex-image-service 與 gemini-web 是可自架的開源服務(見 README);OpenAI 相容則填 baseurl / model / key 即可,例如 OpenAI 官方或任何相容閘道。</p>
-  <p class="hint">不想在網頁上填 key?在專案資料夾放一個 <code>keys.json</code>:<code>{"provider 名稱": "key"}</code>,開專案時自動帶入(只進記憶體)。若專案資料夾有 git 版控,記得把 keys.json 加進 .gitignore。</p>
+  <header class="tab-head"><h2>模型</h2><p>每一列是一個 API 端點——自架服務或任何 OpenAI 相容 API。key 建議放專案資料夾的 <code>keys.json</code>(開專案自動帶入);網頁上填的 key 預設只留在記憶體。</p></header>
+  <div class="card">
+    <div id="provider-list"></div>
+    <div class="actions">
+      <button id="add-provider">新增端點</button>
+      <label class="inline"><input type="checkbox" id="remember-keys"> 記住(含 key)於此瀏覽器</label>
+      <button id="save-providers" class="primary">儲存設定</button>
+    </div>
+  </div>
 </section>
 
-<!-- 章節分鏡 -->
+<!-- 3 分鏡 -->
 <section id="tab-storyboard" class="tab">
-  <h2>章節分鏡</h2>
-  <div class="row">
-    <select id="sb-chapter"></select>
-    <button id="sb-new-chapter">新增章節</button>
-  </div>
-  <div class="row">
-    <input id="sb-url" placeholder="從網址匯入:貼章節頁網址(例 https://yazelin.github.io/token-unlimited/第一章-閱讀版.html)" style="flex:1; min-width: 260px;">
-    <button id="sb-import">匯入</button>
-  </div>
-  <label>章節原文(貼上小說文字)<textarea id="sb-source" rows="10" placeholder="把整章小說文字貼進來…"></textarea></label>
-  <div class="row">
-    <button id="sb-save-source">儲存原文</button>
-    <button id="sb-ai" class="primary">AI 產生分鏡</button>
-    <span id="sb-status" class="status"></span>
-  </div>
-  <div id="sb-panels"></div>
-  <button id="sb-add-panel">新增一格</button>
-  <button id="sb-save" class="primary">儲存分鏡</button>
+  <header class="tab-head"><h2>分鏡</h2><p>匯入或貼上章節文字,AI 切成分鏡腳本後逐格編修。畫面描述是給生圖模型看的,寫得越具體越好。</p></header>
+  <div id="sb-body"></div>
 </section>
 
-<!-- 角色庫 -->
+<!-- 4 角色 -->
 <section id="tab-characters" class="tab">
-  <h2>角色庫</h2>
-  <p class="hint">每個角色=文字設定卡+設定參考圖。生圖時設定卡必定拼進 prompt;參考圖可逐格勾選附帶,角色長相才會穩定。</p>
+  <header class="tab-head"><h2>角色</h2><p>每個角色=文字設定卡+設定參考圖。設定卡必拼進每格 prompt;參考圖讓長相穩定。建議先建好角色再跑分鏡,AI 會直接用角色 id。</p></header>
   <div id="char-list" class="cards"></div>
-  <button id="add-char" class="primary">新增角色</button>
-  <span id="char-status" class="status"></span>
+  <div class="actions">
+    <button id="add-char" class="primary">新增角色</button>
+    <span id="char-status" class="status"></span>
+  </div>
 </section>
 
-<!-- 生圖 -->
+<!-- 5 生圖 -->
 <section id="tab-generate" class="tab">
-  <h2>生圖</h2>
-  <div class="row">
-    <select id="gen-chapter"></select>
-    <label class="inline">每次張數<select id="gen-count"><option>1</option><option>2</option><option selected>3</option><option>4</option></select></label>
+  <header class="tab-head"><h2>生圖</h2><p>逐格生成或整章批量;點候選圖可放大,按「選定」的才會進排版與匯出。</p></header>
+  <div id="gen-toolbar" class="toolbar" hidden>
+    <button id="gen-batch" class="primary">批量生成整章</button>
+    <label class="inline">張數<select id="gen-count"><option>1</option><option selected>2</option><option>3</option><option>4</option></select></label>
     <label class="inline">尺寸<select id="gen-size"><option>1024x1024</option><option selected>1024x1536</option><option>1536x1024</option></select></label>
+    <span id="gen-status" class="status"></span>
   </div>
+  <div id="gen-progress"></div>
   <div id="gen-panels"></div>
 </section>
 
-<!-- 排版匯出 -->
+<!-- 6 排版匯出 -->
 <section id="tab-layout" class="tab">
-  <h2>排版匯出</h2>
-  <p class="hint">在圖上點一下新增氣泡、拖曳移動、雙擊改文字。氣泡是 HTML 疊字,匯出後在閱讀器裡也是文字(可選取、清晰、可改)。</p>
-  <div class="row">
-    <select id="ly-chapter"></select>
-    <button id="ly-fill">從分鏡帶入對白氣泡</button>
+  <header class="tab-head"><h2>排版匯出</h2><p>氣泡是文字疊在圖上:拖曳移動、雙擊編輯、圖上點一下新增。調完記得儲存。</p></header>
+  <div id="ly-toolbar" class="toolbar" hidden>
+    <button id="ly-fill">從分鏡帶入對白</button>
     <button id="ly-save" class="primary">儲存氣泡</button>
     <span id="ly-status" class="status"></span>
   </div>
   <div id="ly-panels"></div>
-  <hr>
-  <h3>匯出 PWA 漫畫電子書</h3>
-  <p class="hint">匯出到專案的 dist/ 資料夾:一個自包含的離線閱讀站,丟到任何靜態空間(GitHub Pages、NAS、隨身碟)都能看、能安裝到手機桌面。</p>
-  <div class="row">
-    <button id="do-export" class="primary">匯出全部章節到 dist/</button>
-    <span id="export-status" class="status"></span>
+  <div class="card export-card">
+    <h3>匯出 PWA 漫畫電子書</h3>
+    <p class="sub">寫進專案的 dist/:自包含離線閱讀站,丟任何靜態空間就能看、能安裝到手機。</p>
+    <div class="actions">
+      <button id="do-export" class="primary">匯出全部章節</button>
+      <span id="export-status" class="status"></span>
+    </div>
   </div>
 </section>
 </main>

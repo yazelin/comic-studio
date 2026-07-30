@@ -1,41 +1,39 @@
-// 排版匯出站:氣泡編輯+匯出 PWA 電子書
-import { $, h, toast, setStatus } from './ui.js';
+// 排版匯出站:氣泡編輯(拖曳/雙擊 modal)+匯出 PWA 電子書
+import { $, h, toast, setStatus, modal, emptyState } from './ui.js';
 import * as store from './store.js';
 import * as data from './data.js';
 import { buildReaderFiles } from './export.js';
-import { app } from './app.js';
+import { app, requireProject } from './app.js';
 
-let dir = null;
 let panelStates = new Map(); // panelId -> {chosen, bubbles}
 
 export async function refreshLayout() {
-  const chapters = await data.listChapters();
-  const sel = $('#ly-chapter');
-  sel.replaceChildren(...chapters.map(c => h('option', { value: c.dir, selected: c.dir === dir }, `${c.dir} ${c.title}`)));
-  sel.onchange = render;
-  if (!dir && chapters.length) dir = chapters[0].dir;
-  if (dir) { sel.value = dir; await render(); }
+  const box = $('#ly-panels');
+  if (!requireProject(box)) { $('#ly-toolbar').hidden = true; return; }
+  $('#ly-toolbar').hidden = false;
+  await render();
 }
 
 async function render() {
-  dir = $('#ly-chapter').value;
-  const sb = await data.loadStoryboard(dir);
-  panelStates = new Map();
   const box = $('#ly-panels');
+  if (!app.chapter) { box.replaceChildren(emptyState('還沒有章節——右上角「＋」新增。')); return; }
+  const sb = await data.loadStoryboard(app.chapter);
+  panelStates = new Map();
   const nodes = [];
   for (const p of sb.panels) {
-    const st = await data.loadPanelState(dir, p.id);
+    const st = await data.loadPanelState(app.chapter, p.id);
     if (!st.chosen) continue;
     panelStates.set(p.id, st);
-    const url = await data.panelImageURL(dir, p.id, st.chosen);
+    const url = await data.panelImageURL(app.chapter, p.id, st.chosen);
     if (!url) continue;
     nodes.push(renderPanel(p, st, url));
   }
-  box.replaceChildren(...(nodes.length ? nodes : [h('p', { class: 'hint' }, '此章還沒有「已選定」的格圖,先到生圖站選定。')]));
+  box.replaceChildren(...(nodes.length ? nodes : [emptyState('此章還沒有「已選定」的格圖,先到「生圖」。')]));
 }
 
 function renderPanel(p, st, url) {
   const wrap = h('div', { class: 'ly-panel', dataset: { pid: p.id } });
+  wrap.append(h('span', { class: 'pnum' }, String(p.order)));
   const img = h('img', { src: url, draggable: false });
   wrap.append(img);
   img.onclick = e => {
@@ -51,6 +49,29 @@ function renderPanel(p, st, url) {
   return wrap;
 }
 
+async function editBubble(b) {
+  const r = await modal({
+    title: '編輯氣泡',
+    fields: [
+      { key: 'text', label: '文字', type: 'textarea', value: b.text },
+      { key: 'speaker', label: '說話者(留空=不顯示)', value: b.speaker },
+      { key: 'type', label: '類型', type: 'select', value: b.type, options: [
+        { value: 'speech', label: '對白(白泡)' },
+        { value: 'thought', label: '內心(虛線泡)' },
+        { value: 'narration', label: '旁白(深色橫條)' },
+      ] },
+      { key: 'w', label: '最大寬度(%)', value: String(b.w || 40) },
+    ],
+    confirmText: '套用',
+  });
+  if (!r) return false;
+  b.text = r.text;
+  b.speaker = r.speaker;
+  b.type = r.type;
+  b.w = Math.min(90, Math.max(10, Number(r.w) || 40));
+  return true;
+}
+
 function redrawBubbles(wrap, st) {
   wrap.querySelectorAll('.bubble').forEach(b => b.remove());
   st.bubbles.forEach((b, i) => {
@@ -58,28 +79,17 @@ function redrawBubbles(wrap, st) {
       b.speaker && b.type !== 'narration' ? h('span', { class: 'spk' }, b.speaker) : null,
       b.text,
       h('button', { class: 'del', onclick: ev => { ev.stopPropagation(); st.bubbles.splice(i, 1); redrawBubbles(wrap, st); } }, '×'),
-      h('select', { class: 'btype', onclick: ev => ev.stopPropagation(), onchange: ev => { b.type = ev.target.value; redrawBubbles(wrap, st); } },
-        h('option', { value: 'speech', selected: b.type === 'speech' }, '對白'),
-        h('option', { value: 'thought', selected: b.type === 'thought' }, '內心'),
-        h('option', { value: 'narration', selected: b.type === 'narration' }, '旁白'),
-      ),
     );
     el.style.left = b.x + '%';
     el.style.top = b.y + '%';
     el.style.maxWidth = (b.w || 40) + '%';
-    el.ondblclick = ev => {
+    el.ondblclick = async ev => {
       ev.stopPropagation();
-      const text = prompt('文字?', b.text);
-      if (text != null) b.text = text;
-      if (b.type !== 'narration') {
-        const spk = prompt('說話者?(留空=不顯示)', b.speaker);
-        if (spk != null) b.speaker = spk;
-      }
-      redrawBubbles(wrap, st);
+      if (await editBubble(b)) redrawBubbles(wrap, st);
     };
     el.onclick = ev => ev.stopPropagation();
     el.onpointerdown = ev => {
-      if (ev.target.closest('.del, .btype')) return;
+      if (ev.target.closest('.del')) return;
       ev.preventDefault();
       const r = wrap.getBoundingClientRect();
       const move = mv => {
@@ -96,10 +106,10 @@ function redrawBubbles(wrap, st) {
   });
 }
 
-// 從分鏡對白帶入氣泡(只補沒有氣泡的格)
+// 從分鏡對白帶入(只補沒有氣泡的格;帶入即落檔)
 $('#ly-fill').onclick = async () => {
-  if (!dir) return;
-  const sb = await data.loadStoryboard(dir);
+  if (!app.chapter) return;
+  const sb = await data.loadStoryboard(app.chapter);
   let filled = 0;
   for (const p of sb.panels) {
     const st = panelStates.get(p.id);
@@ -111,8 +121,7 @@ $('#ly-fill').onclick = async () => {
         w: 40, type: d.type, speaker: d.speaker === '旁白' ? '' : d.speaker, text: d.text,
       });
     });
-    // 先落檔再重繪——render() 會從磁碟重讀 panel.json,不先存會被蓋掉
-    await data.savePanelState(dir, p.id, st);
+    await data.savePanelState(app.chapter, p.id, st);
     filled += 1;
   }
   await render();
@@ -120,7 +129,7 @@ $('#ly-fill').onclick = async () => {
 };
 
 $('#ly-save').onclick = async () => {
-  for (const [pid, st] of panelStates) await data.savePanelState(dir, pid, st);
+  for (const [pid, st] of panelStates) await data.savePanelState(app.chapter, pid, st);
   setStatus('#ly-status', '氣泡已儲存');
 };
 
@@ -130,7 +139,7 @@ $('#do-export').onclick = async () => {
   try {
     setStatus('#export-status', '收集章節資料…');
     const chapters = [];
-    const imageBlobs = []; // {path, blob}
+    const imageBlobs = [];
     for (const ch of await data.listChapters()) {
       const sb = await data.loadStoryboard(ch.dir);
       const panels = [];
@@ -155,7 +164,7 @@ $('#do-export').onclick = async () => {
     for (const size of [192, 512]) await store.writeBlob(`dist/icon-${size}.png`, await makeIcon(app.meta.title, size));
 
     const total = files.length + imageBlobs.length + 2;
-    setStatus('#export-status', `完成:dist/ 共 ${total} 個檔,${chapters.length} 章。丟到任何靜態空間即可離線閱讀。`);
+    setStatus('#export-status', `完成:dist/ 共 ${total} 個檔、${chapters.length} 章。丟到任何靜態空間即可離線閱讀。`);
   } catch (e) {
     setStatus('#export-status', '匯出失敗:' + e.message, true);
   }
@@ -165,9 +174,9 @@ function makeIcon(title, size) {
   const c = document.createElement('canvas');
   c.width = c.height = size;
   const ctx = c.getContext('2d');
-  ctx.fillStyle = '#111114';
+  ctx.fillStyle = '#101013';
   ctx.fillRect(0, 0, size, size);
-  ctx.fillStyle = '#e8e8ea';
+  ctx.fillStyle = '#eceae4';
   ctx.font = `700 ${size * 0.55}px "Noto Sans TC", sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';

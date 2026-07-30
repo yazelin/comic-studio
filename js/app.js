@@ -1,5 +1,5 @@
-// 工作台入口:tab 路由、專案站、模型設定站;其餘站各自模組。
-import { $, h, toast } from './ui.js';
+// 工作台入口:步驟導航、全域章節、專案站、模型站;其餘站各自模組。
+import { $, h, toast, modal, emptyState } from './ui.js';
 import * as store from './store.js';
 import * as data from './data.js';
 import { loadProviders, saveProviders, isPersisted, applyProjectKeys } from './providers.js';
@@ -8,44 +8,86 @@ import { refreshCharacters } from './characters.js';
 import { refreshGenerate } from './generate.js';
 import { refreshLayout } from './layout.js';
 
-export const app = { meta: null }; // 全站共享:專案 meta
+export const app = { meta: null, chapter: '' }; // 全站共享:專案 meta+目前章節
 
-// ── tab 路由 ──
 const refreshers = {
   storyboard: refreshStoryboard,
   characters: refreshCharacters,
   generate: refreshGenerate,
   layout: refreshLayout,
   settings: renderSettings,
+  project: renderProject,
 };
-document.querySelectorAll('#tabs button').forEach(btn => {
-  btn.onclick = async () => {
-    document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('active', b === btn));
-    document.querySelectorAll('.tab').forEach(s => s.classList.toggle('active', s.id === 'tab-' + btn.dataset.tab));
-    const fn = refreshers[btn.dataset.tab];
-    if (fn) {
-      if (btn.dataset.tab !== 'settings' && !store.hasProject()) { toast('請先在「專案」開啟資料夾'); }
-      else await fn();
-    }
-  };
-});
+let activeTab = 'project';
+
+async function switchTab(tab) {
+  activeTab = tab;
+  document.querySelectorAll('#steps .step').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  document.querySelectorAll('.tab').forEach(s => s.classList.toggle('active', s.id === 'tab-' + tab));
+  const fn = refreshers[tab];
+  if (fn) await fn();
+}
+document.querySelectorAll('#steps .step').forEach(btn => { btn.onclick = () => switchTab(btn.dataset.tab); });
+
+export function requireProject(container) {
+  if (store.hasProject()) return true;
+  container.replaceChildren(emptyState('還沒開啟專案資料夾。', '前往「專案」', () => switchTab('project')));
+  return false;
+}
+
+// ── 全域章節 ──
+export async function refreshChapters(selectDir = null) {
+  const chapters = await data.listChapters();
+  const sel = $('#global-chapter');
+  if (selectDir) app.chapter = selectDir;
+  if (!app.chapter && chapters.length) app.chapter = chapters[0].dir;
+  if (app.chapter && !chapters.some(c => c.dir === app.chapter)) app.chapter = chapters[0]?.dir || '';
+  sel.replaceChildren(
+    chapters.length ? null : h('option', { value: '' }, '尚無章節'),
+    ...chapters.map(c => h('option', { value: c.dir, selected: c.dir === app.chapter }, `${c.dir} ${c.title}`)),
+  );
+  return chapters;
+}
+
+$('#global-chapter').onchange = async () => {
+  app.chapter = $('#global-chapter').value;
+  if (refreshers[activeTab] && ['storyboard', 'generate', 'layout'].includes(activeTab)) await refreshers[activeTab]();
+};
+
+$('#new-chapter').onclick = async () => {
+  if (!store.hasProject()) { toast('請先開啟專案資料夾'); return; }
+  const r = await modal({ title: '新增章節', fields: [{ key: 'title', label: '章節標題', placeholder: '第一章:一萬字的火球' }], confirmText: '建立' });
+  if (!r || !r.title) return;
+  const dir = await data.newChapter(r.title);
+  await refreshChapters(dir);
+  toast(`已建立章節 ${dir}`);
+  if (['storyboard', 'generate', 'layout'].includes(activeTab)) await refreshers[activeTab]();
+};
 
 // ── 專案站 ──
-$('#open-project').onclick = async () => {
+function renderProject() {
+  const empty = $('#project-empty');
+  if (store.hasProject()) { empty.replaceChildren(); return; }
+  empty.replaceChildren(emptyState('選一個資料夾當專案——新資料夾或既有專案都可以。', '開啟 / 建立專案資料夾', openProject));
+}
+
+async function openProject() {
   if (!window.showDirectoryPicker) { toast('此瀏覽器不支援 File System Access,請用 Chrome / Edge'); return; }
   try {
     const name = await store.openProject();
-    $('#project-badge').textContent = '專案:' + name;
+    $('#project-badge').textContent = name;
     app.meta = await data.loadMeta();
     if (!app.meta.title) app.meta.title = name;
     const nKeys = applyProjectKeys(await store.readJSON('keys.json', null));
     fillProjectForm();
     $('#project-form').hidden = false;
+    renderProject();
+    await refreshChapters();
     toast(nKeys ? `專案已開啟(keys.json 帶入 ${nKeys} 把 key)` : '專案已開啟');
   } catch (e) {
     if (e.name !== 'AbortError') toast('開啟失敗:' + e.message);
   }
-};
+}
 
 function providerOptions(sel, chosen) {
   sel.replaceChildren(...loadProviders().map(p => h('option', { selected: p.name === chosen }, p.name)));
@@ -67,7 +109,7 @@ $('#save-project').onclick = async () => {
   toast('已儲存 project.json');
 };
 
-// ── 模型設定站 ──
+// ── 模型站 ──
 const TYPES = ['codex-image-service', 'gemini-web', 'openai-compatible'];
 
 function renderSettings() {
@@ -75,14 +117,14 @@ function renderSettings() {
   $('#remember-keys').checked = isPersisted();
   const box = $('#provider-list');
   box.replaceChildren(
-    h('div', { class: 'provider-row hint' }, h('span', {}, '名稱'), h('span', {}, '類型'), h('span', {}, 'baseurl'), h('span', {}, 'model'), h('span', {}, 'API key'), h('span', {})),
+    h('div', { class: 'provider-row provider-head' }, h('span', {}, '名稱'), h('span', {}, '類型'), h('span', {}, 'baseurl'), h('span', {}, 'model'), h('span', {}, 'API key'), h('span', {})),
     ...list.map((p, i) => h('div', { class: 'provider-row', dataset: { i } },
       h('input', { value: p.name, dataset: { f: 'name' } }),
       h('select', { dataset: { f: 'type' } }, ...TYPES.map(t => h('option', { selected: t === p.type }, t))),
       h('input', { value: p.baseurl, dataset: { f: 'baseurl' }, placeholder: 'https://…' }),
       h('input', { value: p.model, dataset: { f: 'model' } }),
       h('input', { value: p.apiKey, dataset: { f: 'apiKey' }, type: 'password', placeholder: '(選填)' }),
-      h('button', { class: 'danger', onclick: () => { list.splice(i, 1); saveProviders(list, $('#remember-keys').checked); renderSettings(); } }, '刪'),
+      h('button', { class: 'danger icon-btn', onclick: () => { list.splice(i, 1); saveProviders(list, $('#remember-keys').checked); renderSettings(); } }, '刪'),
     )),
   );
 }
@@ -104,3 +146,5 @@ $('#save-providers').onclick = () => {
   toast($('#remember-keys').checked ? '已儲存(含 key,存於此瀏覽器)' : '已儲存(key 僅在本分頁有效)');
   if (app.meta) fillProjectForm();
 };
+
+renderProject();
