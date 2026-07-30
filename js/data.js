@@ -26,7 +26,9 @@ export async function listChapters() {
 
 export async function newChapter(title) {
   const existing = await listChapters();
-  const n = String(existing.length + 1).padStart(2, '0');
+  // 最大編號+1,不是數量+1——中間刪過章節時數量+1 會撞號蓋掉舊章
+  const max = existing.reduce((m, c) => Math.max(m, parseInt(c.dir, 10) || 0), 0);
+  const n = String(max + 1).padStart(2, '0');
   await store.writeJSON(`chapters/${n}/chapter.json`, { title });
   return n;
 }
