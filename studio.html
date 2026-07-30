@@ -24,7 +24,8 @@
   <button data-tab="storyboard" class="step"><span class="no">3</span><span class="t">分鏡</span></button>
   <button data-tab="characters" class="step"><span class="no">4</span><span class="t">角色</span></button>
   <button data-tab="generate" class="step"><span class="no">5</span><span class="t">生圖</span></button>
-  <button data-tab="layout" class="step"><span class="no">6</span><span class="t">排版匯出</span></button>
+  <button data-tab="layout" class="step"><span class="no">6</span><span class="t">排版</span></button>
+  <button data-tab="bake" class="step"><span class="no">7</span><span class="t">匯出</span></button>
 </nav>
 
 <main>
@@ -89,16 +90,27 @@
 
 <!-- 6 排版匯出 -->
 <section id="tab-layout" class="tab">
-  <header class="tab-head"><h2>排版匯出</h2><p>氣泡是文字疊在圖上:拖曳移動、雙擊編輯、圖上點一下新增。調完記得儲存。</p></header>
+  <header class="tab-head"><h2>排版</h2><p>氣泡是文字疊在圖上:拖曳移動、雙擊編輯、圖上點一下新增。調完記得儲存。這裡只決定「字的內容+大概位置」;要把文字畫進圖、產出成品,到下一步「匯出」。</p></header>
   <div id="ly-toolbar" class="toolbar" hidden>
     <button id="ly-fill">從分鏡帶入對白</button>
     <button id="ly-save" class="primary">儲存氣泡</button>
     <span id="ly-status" class="status"></span>
   </div>
   <div id="ly-panels"></div>
+</section>
+
+<section id="tab-bake" class="tab">
+  <header class="tab-head"><h2>匯出</h2><p>出版動作:每格拿「選定圖+排版文字」請生圖模型整張重繪,文字成為畫的一部分(白泡/浮字/旁白條)。烙完逐格檢查錯字,不滿意可單格重繪;沒有字的格直接沿用選定圖。成品存進章節的 匯出/ 資料夾。</p></header>
+  <div id="bk-toolbar" class="toolbar" hidden>
+    <button id="bk-all" class="primary">整章重繪(略過已完成)</button>
+    <button id="bk-stop">停止</button>
+    <button id="bk-refresh">重新整理</button>
+    <span id="bk-status" class="status"></span>
+  </div>
+  <div id="bk-panels" class="bk-strip"></div>
   <div class="card export-card">
     <h3>匯出 PWA 漫畫電子書</h3>
-    <p class="sub">寫進專案的 dist/:自包含離線閱讀站,丟任何靜態空間就能看、能安裝到手機。</p>
+    <p class="sub">已重繪的格用重繪圖(文字在圖裡);還沒重繪的格用選定圖+疊字。寫進專案的 dist/:自包含離線閱讀站,丟任何靜態空間就能看、能安裝到手機。</p>
     <div class="actions">
       <button id="do-export" class="primary">匯出全部章節</button>
       <span id="export-status" class="status"></span>

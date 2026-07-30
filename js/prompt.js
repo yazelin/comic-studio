@@ -94,3 +94,29 @@ export function buildPanelPrompt({ style, panel, characterCards = [] }) {
     '重要:圖中不要出現任何文字、對白框、狀聲字或浮水印;對白之後會用排版疊加。',
   ].filter(Boolean).join('\n');
 }
+
+// ── 匯出重繪(bake):把排版氣泡(內容+大概位置)織成 image-edit 指令,文字由模型畫進圖 ──
+// 排版只傳兩件事:字的最終內容+大概位置;泡形、大小、精確擺位交給重繪端照畫面決定。
+const BAKE_STYLES = {
+  speech: "a clean white rounded hand-drawn speech bubble with a thin dark outline and a small tail pointing toward the speaker's mouth, containing",
+  thought: 'free-floating hand-lettered inner-monologue text with NO bubble and NO box, dark ink letters with a subtle soft white halo for legibility, reading',
+  narration: 'a slim rectangular narration caption box with a plain dark background and clean white lettering, containing',
+};
+
+function bakeRegion(x, y) {
+  const hPos = x < 33 ? 'left' : x < 66 ? 'center' : 'right';
+  const vPos = y < 25 ? 'top' : y < 50 ? 'upper-middle' : y < 75 ? 'lower-middle' : 'bottom';
+  return `${vPos}-${hPos}`;
+}
+
+export function buildBakePrompt(bubbles) {
+  const parts = [...bubbles]
+    .sort((a, b) => (a.y || 0) - (b.y || 0) || (a.x || 0) - (b.x || 0))
+    .map((b, i) => `(${i + 1}) in the ${bakeRegion(b.x ?? 50, b.y ?? 20)} area, ${BAKE_STYLES[b.type] || BAKE_STYLES.speech} exactly this Traditional Chinese text, horizontal, perfectly legible, every character stroke correct, full-width CJK punctuation, and nothing else: ${b.text}`);
+  return 'Use case: image-edit. Input images: Image 1: the finished comic panel artwork. '
+    + `Primary request: redraw this exact panel as a finished webtoon comic panel WITH ${parts.length} pieces of text drawn into the image as part of the comic art: `
+    + parts.join(' ')
+    + ' Keep the artwork, colors, faces and composition of image 1 unchanged apart from adding these text elements.'
+    + ' All lettering must look hand-typeset as part of the comic page, not a computer UI overlay.'
+    + ' Do NOT add any corner brackets or quotation marks unless they appear in the given text. No other text anywhere.';
+}
