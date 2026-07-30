@@ -40,8 +40,12 @@ export async function refreshChapters(selectDir = null) {
   const chapters = await data.listChapters();
   const sel = $('#global-chapter');
   if (selectDir) app.chapter = selectDir;
-  if (!app.chapter && chapters.length) app.chapter = chapters[0].dir;
+  if (!app.chapter && chapters.length) {
+    const last = app.meta?.lastChapter;
+    app.chapter = (last && chapters.some(c => c.dir === last)) ? last : chapters[0].dir;
+  }
   if (app.chapter && !chapters.some(c => c.dir === app.chapter)) app.chapter = chapters[0]?.dir || '';
+  rememberChapter();
   sel.replaceChildren(
     chapters.length ? null : h('option', { value: '' }, '尚無章節'),
     ...chapters.map(c => h('option', { value: c.dir, selected: c.dir === app.chapter }, `${c.dir} ${c.title}`)),
@@ -49,8 +53,17 @@ export async function refreshChapters(selectDir = null) {
   return chapters;
 }
 
+// 記住上次選的章節(存 project.json),重開專案不用再選
+function rememberChapter() {
+  if (app.meta && app.chapter && app.meta.lastChapter !== app.chapter) {
+    app.meta.lastChapter = app.chapter;
+    data.saveMeta(app.meta);
+  }
+}
+
 $('#global-chapter').onchange = async () => {
   app.chapter = $('#global-chapter').value;
+  rememberChapter();
   if (refreshers[activeTab] && ['storyboard', 'generate', 'layout'].includes(activeTab)) await refreshers[activeTab]();
 };
 
