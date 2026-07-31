@@ -11,6 +11,9 @@ comic-studio 的定位:**人審人調的工作台+可執行的輸出標準**。�
   - 表情/動作集一定要以立繪當參考圖生成,否則等於重抽一個人
 - `chapters/<n>/chapter.json`:`title`(**真章名**,話數≠章號:第 1 話可能叫「序章」)、`extras`(本章一次性說話者:守衛、考官、賓客…不開角色卡,但要宣告,linter 只認宣告過的名字)
 - `characters/<id>/card.json` 的 `hidden: true`=**伏筆角色**:照樣當生圖角色(附參考圖、進 cast),但不上公開角色頁——臉還不能給讀者的人用這個
+- `world/<id>/card.json` + `ref.png`=**世界風土庫**(場景、道具、風土素材:公會大廳、告示板、貨幣、文字筆跡、街市攤位…)。跟角色庫同形狀,分鏡用 `panel.world: ["node_guild_hall"]` 指名,生圖時當這一格的**場景鎖**附上去——沒有它,同一個大廳每格都會重抽一個樣子
+  - 參考圖優先序:**場景鎖 → 每個出場角色的立繪(保底)→ 表情/動作**;上限 codex 8 張(該 API 無張數限制)、其餘 4 張(gemini-web 只吃單張,多張會被併小)
+  - **群像表不可以直接當 ref**:一張圖裡有別人,生圖就會把別人的臉帶進來。群像只是產線中間物,一定要裁成單人 `ref.png`
 - `chapters/<n>/storyboard.json`:分鏡=正本。**有角色的格,scene 必含「表情:」**(眼/眉/嘴的具體狀態)——表情缺席=生圖出呆臉,是分鏡層的責任
 - `chapters/<n>/panels/<pid>/`:`cand-N.png` 候選、`fx-N.png` 效果層、`panel.json{chosen,bubbles,effects}`
 - `panel.json` 的 bubbles=**文字正本**(人在排版層改過的字以此為準,別回頭讀 storyboard 蓋掉)

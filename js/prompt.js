@@ -55,6 +55,7 @@ export function parseStoryboard(text) {
     order: i + 1,
     scene: String(p.scene || ''),
     characters: Array.isArray(p.characters) ? p.characters.map(String) : [],
+    world: Array.isArray(p.world) ? p.world.map(String) : [],
     shot: String(p.shot || ''),
     dialogue: Array.isArray(p.dialogue)
       ? p.dialogue.map(d => ({
@@ -111,14 +112,18 @@ export function buildPoseSheetPrompt({ style, name, card, poses = [] }) {
 }
 
 // 單格生圖 prompt = 全域畫風 + 鏡頭 + 場景 + 出場角色設定卡 + 禁畫字
-export function buildPanelPrompt({ style, panel, characterCards = [] }) {
+export function buildPanelPrompt({ style, panel, characterCards = [], worldCards = [] }) {
   const cast = characterCards
     .filter(c => panel.characters.includes(c.id) || panel.characters.includes(c.name))
     .map(c => `- ${c.name}: ${c.card}${c.must_not ? `\n  絕對不可出現: ${c.must_not}` : ''}`);
+  const world = worldCards
+    .filter(w => (panel.world || []).includes(w.id) || (panel.world || []).includes(w.name))
+    .map(w => `- ${w.name}: ${w.card}${w.must_not ? `\n  絕對不可出現: ${w.must_not}` : ''}`);
   return [
     `畫風: ${style}`,
     `鏡頭: ${panel.shot || '中景'}`,
     `畫面: ${panel.scene}`,
+    world.length ? '場景與道具(必須完全符合設定):\n' + world.join('\n') : '',
     cast.length ? '出場角色(外觀必須完全符合設定):\n' + cast.join('\n') : '',
     panel.notes ? `備註: ${panel.notes}` : '',
     '重要:圖中不要出現任何文字、對白框、狀聲字或浮水印;對白之後會用排版疊加。',

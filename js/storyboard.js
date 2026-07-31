@@ -101,7 +101,7 @@ async function aiStoryboard() {
 
 function addPanel() {
   if (!app.chapter) { toast('先在右上角新增章節'); return; }
-  sb.panels.push({ id: 'p' + Date.now().toString(36), order: sb.panels.length + 1, scene: '', characters: [], shot: '中景', dialogue: [], notes: '' });
+  sb.panels.push({ id: 'p' + Date.now().toString(36), order: sb.panels.length + 1, scene: '', characters: [], world: [], shot: '中景', dialogue: [], notes: '' });
   renderPanels();
   autosave();
 }
@@ -135,6 +135,7 @@ function renderPanels() {
     h('label', {}, '畫面描述', h('textarea', { rows: 2, oninput: e => { p.scene = e.target.value; autosave(); } }, p.scene)),
     h('div', { class: 'sb-grid' },
       h('label', {}, '出場角色(id,逗號分隔)', h('input', { value: p.characters.join(','), oninput: e => { p.characters = e.target.value.split(/[,、\s]+/).filter(Boolean); autosave(); } })),
+      h('label', {}, '場景/道具(world id,逗號分隔)', h('input', { value: (p.world || []).join(','), oninput: e => { p.world = e.target.value.split(/[,、\s]+/).filter(Boolean); autosave(); } })),
       h('label', {}, '鏡頭', h('input', { value: p.shot, oninput: e => { p.shot = e.target.value; autosave(); } })),
       h('label', {}, '備註', h('input', { value: p.notes, oninput: e => { p.notes = e.target.value; autosave(); } })),
     ),

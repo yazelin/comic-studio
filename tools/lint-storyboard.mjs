@@ -13,7 +13,7 @@ const HALF = /[,.!?:;()"']/g;          // 中文台詞裡不該出現的半形�
 const NARRATOR = ['旁白', ''];          // 旁白可以沒有 speaker
 
 // 驗一章;回傳問題陣列。cast=可用的說話者名字/ id
-export function lintStoryboard(sb, { chapter = '', cast = [] } = {}) {
+export function lintStoryboard(sb, { chapter = '', cast = [], world = [] } = {}) {
   const bad = [];
   const at = p => `${chapter}/${p.id || '?'}`;
   const seen = new Set();
@@ -21,6 +21,9 @@ export function lintStoryboard(sb, { chapter = '', cast = [] } = {}) {
     if (seen.has(p.id)) bad.push(`${at(p)}:panel id 重複`);
     seen.add(p.id);
     if (!String(p.scene || '').trim()) bad.push(`${at(p)}:scene 空白`);
+    for (const w of p.world || []) {
+      if (world.length && !world.includes(w)) bad.push(`${at(p)}:world「${w}」在 world/ 裡找不到——場景鎖等於沒附`);
+    }
     if ((p.characters || []).length && !/表情/.test(p.scene || '')) {
       bad.push(`${at(p)}:有角色卻沒寫「表情:」——生圖會出呆臉`);
     }
@@ -43,6 +46,7 @@ function selfTest() {
     { id: 'p1', scene: '中景。表情:眼睛微張,嘴抿著。', characters: ['陸修'], dialogue: [{ speaker: '陸修', text: '這條路是走出來的。', type: 'speech' }] },
     { id: 'p2', scene: '空景。一條車轍路。', characters: [], dialogue: [{ speaker: '', text: '路的意思是有人。', type: 'narration' }] },
   ] };
+  const badWorld = lintStoryboard({ panels: [{ id: 'p1', scene: '空景。', characters: [], world: ['no_such_place'], dialogue: [] }] }, { world: ['node_guild_hall'] });
   const bad = { panels: [
     { id: 'p1', scene: '中景,他站著。', characters: ['陸修'], dialogue: [{ speaker: '守衛', text: '來歷,文件?', type: 'talk' }] },
     { id: 'p1', scene: '', characters: [], dialogue: [] },
@@ -51,7 +55,8 @@ function selfTest() {
   const dirty = lintStoryboard(bad, { cast });
   const has = re => dirty.some(m => re.test(m));
   const ok = clean.length === 0
-    && has(/表情/) && has(/半形/) && has(/type/) && has(/不在角色表/) && has(/重複/) && has(/scene 空白/);
+    && has(/表情/) && has(/半形/) && has(/type/) && has(/不在角色表/) && has(/重複/) && has(/scene 空白/)
+    && badWorld.some(m => /world/.test(m));
   console.log(clean.length === 0 ? '負控制通過:乾淨的分鏡 0 問題' : `負控制失敗:${clean.join(' / ')}`);
   console.log(`召回:壞分鏡抓到 ${dirty.length} 條 —— ${dirty.join(' / ')}`);
   if (!ok) { console.error('self-test 失敗'); process.exit(1); }
@@ -74,6 +79,14 @@ if (existsSync(charRoot)) {
   }
 }
 
+const world = [];
+const worldRoot = join(root, 'world');
+if (existsSync(worldRoot)) {
+  for (const id of readdirSync(worldRoot)) {
+    if (existsSync(join(worldRoot, id, 'card.json'))) world.push(id);
+  }
+}
+
 const only = process.argv.slice(3);
 const chDirs = readdirSync(join(root, 'chapters')).sort().filter(d => !only.length || only.includes(d));
 let total = 0;
@@ -84,7 +97,7 @@ for (const dir of chDirs) {
   // 宣告過才算數,才擋得住把「守衛」打成「衛守」這種沒人會發現的錯字
   const cj = join(root, 'chapters', dir, 'chapter.json');
   const extras = existsSync(cj) ? (JSON.parse(readFileSync(cj, 'utf8')).extras || []) : [];
-  const bad = lintStoryboard(JSON.parse(readFileSync(sbPath, 'utf8')), { chapter: dir, cast: [...cast, ...extras] });
+  const bad = lintStoryboard(JSON.parse(readFileSync(sbPath, 'utf8')), { chapter: dir, cast: [...cast, ...extras], world });
   total += bad.length;
   console.log(bad.length ? `\n[${dir}] ${bad.length} 條:\n` + bad.map(b => '  ' + b).join('\n') : `[${dir}] 通過`);
 }
