@@ -169,6 +169,7 @@ async function redrawOverlays(wrap, st) {
     el.style.left = b.x + '%';
     el.style.top = b.y + '%';
     el.style.maxWidth = (b.w || 40) + '%';
+    if (b.fs) el.style.fontSize = b.fs + 'cqw';
     el.ondblclick = async ev => {
       ev.stopPropagation();
       if (await editBubble(b)) redrawOverlays(wrap, st);
@@ -221,6 +222,7 @@ async function editBubble(b) {
         { value: 'sfx', label: '效果字(CSS 版;要畫進圖用效果層)' },
       ] },
       { key: 'w', label: '最大寬度(%)', value: String(b.w || 40) },
+      { key: 'fs', label: '字級(留空=自動;數字=格寬%,自動約3.4)', value: b.fs ? String(b.fs) : '' },
     ],
     confirmText: '套用',
   });
@@ -229,6 +231,8 @@ async function editBubble(b) {
   b.speaker = r.speaker;
   b.type = r.type;
   b.w = Math.min(90, Math.max(10, Number(r.w) || 40));
+  const fs = parseFloat(r.fs);
+  if (Number.isFinite(fs) && fs > 0) b.fs = Math.min(15, Math.max(1, fs)); else delete b.fs;
   return true;
 }
 
