@@ -373,3 +373,25 @@ console.log('studio/export parity ok');
     '存範本要用展開合併,直接指派會把 site.url/links/colors 清掉');
   console.log('theme picker ok');
 }
+
+// ── 社群分享圖(og:image) ──
+{
+  const mk = og => buildReaderFiles({ title: 'T', chapters: [{ title: 'C', panels: [{ image: 'i.png', bubbles: [] }] }],
+    site: { url: 'https://x.dev/c' }, ogPath: og }).find(f => f.path === 'index.html').content;
+  const noOg = mk(null), withOg = mk('og.jpg');
+  assert.ok(noOg.includes('og:image" content="https://x.dev/c/icon-512.png"'), '沒有專屬 og 圖時退回 app icon');
+  assert.ok(!noOg.includes('twitter:card'),
+    '沒有 1.91:1 大圖就不可開 summary_large_image——平台會拿 512 方形去撐大圖卡,更難看');
+  assert.ok(withOg.includes('og:image" content="https://x.dev/c/og.jpg"'), '有 og 圖就要指過去');
+  assert.ok(withOg.includes('og:image:width" content="1200"') && withOg.includes('og:image:height" content="630"'),
+    '要標尺寸,爬蟲才不用自己抓圖判斷');
+  assert.ok(withOg.includes('twitter:card" content="summary_large_image"'), '有大圖才開大圖卡');
+  // 章頁與角色頁也該吃到同一張(分享的常常不是首頁)
+  const pages = buildReaderFiles({ title: 'T', chapters: [{ title: 'C', panels: [{ image: 'i.png', bubbles: [] }] }],
+    characters: [{ id: 'x', name: 'X' }], site: { url: 'https://x.dev/c' }, ogPath: 'og.jpg' });
+  for (const path of ['read/1.html', 'char/x.html']) {
+    assert.ok(pages.find(f => f.path === path).content.includes('og:image" content="https://x.dev/c/og.jpg"'),
+      path + ' 也要指到 og 圖(分享的常常不是首頁)');
+  }
+  console.log('og image ok');
+}
