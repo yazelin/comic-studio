@@ -321,3 +321,48 @@ console.log('bubble tails ok');
   assert.ok(fs.existsSync('assets/fonts/OFL.txt'), 'OFL 授權要隨字型附上');
 }
 console.log('studio/export parity ok');
+
+// ── 出版範本(site.theme) ──
+{
+  const { THEMES } = await import('../js/export.js');
+  const mk = site => buildReaderFiles({ title: 'T', chapters: [{ title: 'C', panels: [{ image: 'i.png', bubbles: [] }] }], site });
+  const css = s => mk(s).find(f => f.path === 'style.css').content;
+
+  for (const k of ['paper', 'token-unlimited', 'workbench', 'midnight']) {
+    assert.ok(THEMES[k], '少了範本:' + k);
+    for (const field of ['bg', 'ink', 'dim', 'line', 'accent', 'panelGap', 'bubbleBg', 'bubbleInk', 'narrationBg', 'narrationInk']) {
+      assert.ok(THEMES[k][field], `範本 ${k} 缺欄位 ${field}——缺一項就會被暖紙的值補上,悄悄長錯色`);
+    }
+  }
+  assert.ok(css({}).includes('--bg:#f4f1ea'), '不給範本=暖紙');
+  assert.ok(css({ theme: 'token-unlimited' }).includes('--acc:#F6C945'),
+    '土金範本的 accent 是 canon 定死的金 #F6C945(進度條=被花掉多少)');
+  assert.ok(css({ theme: 'token-unlimited' }).includes('--bg:#e8e0d2'), '土金範本要換站台底色');
+  assert.ok(css({ theme: 'midnight' }).includes('--bg:#12141d'), '深夜範本要換站台底色');
+  assert.ok(css({ theme: '打錯的名字' }).includes('--bg:#f4f1ea'), '範本名打錯要退回暖紙,不是壞掉');
+  assert.ok(css({ theme: 'midnight', colors: { bg: '#000' } }).includes('--bg:#000'), 'site.colors 蓋得過範本');
+  assert.ok(css({ theme: 'midnight', colors: { bg: '#000' } }).includes('--acc:#e8c26a'), '只蓋指定的那一項,其餘留範本的');
+  const mfst = JSON.parse(mk({ theme: 'workbench' }).find(f => f.path === 'manifest.json').content);
+  assert.equal(mfst.theme_color, '#101013', 'manifest 色票要跟著範本走');
+
+  // 氣泡與尾巴要吃範本變數,不能硬寫白——換深色範本時尾巴會跟泡不同色
+  const bodyCss = css({}).split('\n').slice(1).join('\n');
+  const bubbleRules = bodyCss.split('\n').filter(l => l.includes('.bubble') && !l.includes('.thought') && !l.includes('.sfx'));
+  assert.ok(bubbleRules.length >= 9, '氣泡規則應該有一批');
+  for (const rule of bubbleRules) {
+    assert.ok(!/#fff\b|#ffffff\b/i.test(rule), '氣泡/尾巴不可硬寫白,要走 var(--bub):' + rule.trim().slice(0, 60));
+  }
+  assert.ok(bodyCss.includes('background: var(--bub)') && bodyCss.includes('color: var(--bub-ink)'), '對白泡吃範本色');
+  assert.ok(bodyCss.includes('background: var(--narr)'), '旁白條吃範本色');
+  console.log('themes ok');
+}
+
+// ── 範本要能在 UI 選,且不可蓋掉 site 的其他欄 ──
+{
+  const fs = await import('node:fs');
+  assert.ok(fs.readFileSync('studio.html', 'utf8').includes('id="p-theme"'), '專案設定要有範本下拉');
+  const appjs = fs.readFileSync('js/app.js', 'utf8');
+  assert.ok(/app\.meta\.site = \{ \.\.\.\(app\.meta\.site \|\| \{\}\), theme:/.test(appjs),
+    '存範本要用展開合併,直接指派會把 site.url/links/colors 清掉');
+  console.log('theme picker ok');
+}

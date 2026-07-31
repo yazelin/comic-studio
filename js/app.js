@@ -8,6 +8,7 @@ import { refreshCharacters } from './characters.js';
 import { refreshGenerate } from './generate.js';
 import { refreshLayout } from './layout.js';
 import { refreshBake } from './bake.js';
+import { THEMES } from './export.js';
 
 export const app = { meta: null, chapter: '' }; // 全站共享:專案 meta+目前章節
 
@@ -120,9 +121,14 @@ function providerOptions(sel, chosen) {
   sel.replaceChildren(...loadProviders().map(p => h('option', { selected: p.name === chosen }, p.name)));
 }
 
+const THEME_LABELS = { paper: '暖紙(預設)', 'token-unlimited': '土金', workbench: '製版桌', midnight: '深夜' };
+
 function fillProjectForm() {
   $('#p-title').value = app.meta.title;
   $('#p-style').value = app.meta.style;
+  const theme = app.meta.site?.theme || 'paper';
+  $('#p-theme').replaceChildren(...Object.keys(THEMES).map(k =>
+    h('option', { value: k, selected: k === theme }, THEME_LABELS[k] || k)));
   providerOptions($('#p-image-provider'), app.meta.providers.image);
   providerOptions($('#p-text-provider'), app.meta.providers.text);
 }
@@ -130,6 +136,8 @@ function fillProjectForm() {
 $('#save-project').onclick = async () => {
   app.meta.title = $('#p-title').value.trim();
   app.meta.style = $('#p-style').value.trim();
+  // site 的其他欄(url/links/colors…)是人手寫在 project.json 的,只動 theme,別整包覆蓋掉
+  app.meta.site = { ...(app.meta.site || {}), theme: $('#p-theme').value };
   app.meta.providers.image = $('#p-image-provider').value;
   app.meta.providers.text = $('#p-text-provider').value;
   await data.saveMeta(app.meta);
