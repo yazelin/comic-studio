@@ -8,15 +8,19 @@
 // site 設定(project.json 的 site 欄,全部可選):
 //   { url, description, author, links:{github,facebook,coffee,novel}, storageKey }
 
+const DEFAULT_COLORS = { bg: '#f4f1ea', ink: '#2a2622', dim: '#7a7266', line: 'rgba(0,0,0,.08)', accent: '#b98d2f', panelGap: '#e9e4d8' };
+
 export function buildReaderFiles({ title, chapters, characters = [], site = {}, cover = null }) {
   const KEY = 'comic-' + (site.storageKey || title);
+  const C = { ...DEFAULT_COLORS, ...(site.colors || {}) };
   const files = [];
   const imagePaths = chapters.flatMap(ch => ch.panels.flatMap(p => [p.image, ...(p.effects || []).map(f => f.image)]));
   for (const c of characters) if (c.image) imagePaths.push(c.image);
   if (cover) imagePaths.push(cover);
 
-  files.push({ path: 'style.css', content: SITE_CSS });
+  files.push({ path: 'style.css', content: `:root{--bg:${C.bg};--ink:${C.ink};--dim:${C.dim};--line:${C.line};--acc:${C.accent};--gap:${C.panelGap}}\n` + SITE_CSS });
   files.push({ path: 'app.js', content: appJs(KEY) });
+  site = { ...site, _bg: C.bg };
   files.push({ path: 'index.html', content: indexHtml({ title, chapters, characters, site, cover }) });
   chapters.forEach((ch, i) => {
     files.push({ path: `read/${i + 1}.html`, content: readHtml({ title, chapters, i, site }) });
@@ -26,7 +30,7 @@ export function buildReaderFiles({ title, chapters, characters = [], site = {}, 
   }
   files.push({ path: 'manifest.json', content: JSON.stringify({
     name: title, short_name: title, start_url: './', scope: './',
-    display: 'standalone', background_color: '#111114', theme_color: '#111114',
+    display: 'standalone', background_color: C.bg, theme_color: C.bg,
     icons: [
       { src: './icon-192.png', sizes: '192x192', type: 'image/png' },
       { src: './icon-512.png', sizes: '512x512', type: 'image/png' },
@@ -70,7 +74,7 @@ ${desc ? `<meta property="og:description" content="${esc(desc)}">` : ''}
 <meta property="og:image" content="${esc(base + '/icon-512.png')}">` : ''}
 <link rel="manifest" href="${rel(path)}manifest.json">
 <link rel="icon" href="${rel(path)}icon-192.png">
-<meta name="theme-color" content="#111114">
+<meta name="theme-color" content="${site._bg}">
 <link rel="stylesheet" href="${rel(path)}style.css">
 ${extra}
 </head>
@@ -244,35 +248,34 @@ function esc(s) {
 
 // ── 全站樣式 ──
 
-const SITE_CSS = `:root { color-scheme: dark; }
-* { margin: 0; box-sizing: border-box; }
-body { background: #111114; color: #eee; font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif; line-height: 1.7; }
-a { color: #d8d4c8; }
+const SITE_CSS = `* { margin: 0; box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif; line-height: 1.7; }
+a { color: var(--ink); }
 h1, h2 { font-weight: 700; }
 /* 首頁 */
 .home { max-width: 640px; margin: 0 auto; padding: 4vh 1.2rem 2rem; }
 .hero { text-align: center; padding-bottom: 2.2rem; }
 .hero .cover { width: min(70%, 320px); border-radius: 10px; margin-bottom: 1.2rem; }
 .hero h1 { font-size: 1.7rem; letter-spacing: .05em; }
-.hook { color: #b9b4a8; margin: .8rem 0 1.2rem; }
-.newest { color: #9a958a; font-size: .95rem; }
-.resume { display: inline-block; margin-top: .9rem; padding: .55rem 1.1rem; border: 1px solid #444; border-radius: 999px; text-decoration: none; font-size: .95rem; }
-.toc-sec h2, .chars h2 { font-size: 1.05rem; color: #9a958a; margin: 1.6rem 0 .6rem; }
-.toc { list-style: none; border-top: 1px solid #26262c; }
-.toc li { border-bottom: 1px solid #26262c; }
+.hook { color: var(--dim); margin: .8rem 0 1.2rem; }
+.newest { color: var(--dim); font-size: .95rem; }
+.resume { display: inline-block; margin-top: .9rem; padding: .55rem 1.1rem; border: 1px solid var(--line); border-radius: 999px; text-decoration: none; font-size: .95rem; }
+.toc-sec h2, .chars h2 { font-size: 1.05rem; color: var(--dim); margin: 1.6rem 0 .6rem; }
+.toc { list-style: none; border-top: 1px solid var(--line); padding: 0; }
+.toc li { border-bottom: 1px solid var(--line); }
 .toc a { display: flex; gap: 1rem; align-items: baseline; padding: .9rem .2rem; text-decoration: none; }
-.toc .n { color: #7a766c; font-size: .78rem; letter-spacing: .2em; }
+.toc .n { color: var(--dim); font-size: .78rem; letter-spacing: .2em; }
 .toc .t { font-size: 1.05rem; }
 .char-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: .9rem; }
-.char-card { text-align: center; text-decoration: none; font-size: .9rem; color: #cfcabf; }
+.char-card { text-align: center; text-decoration: none; font-size: .9rem; color: var(--ink); }
 .char-card img { width: 100%; aspect-ratio: 3/4; object-fit: cover; object-position: top; border-radius: 8px; margin-bottom: .35rem; }
 /* 閱讀頁 */
-.reader-top { position: fixed; top: 0; left: 0; right: 0; z-index: 10; display: flex; justify-content: space-between; align-items: center; gap: .8rem; padding: .55rem .9rem; background: rgba(17,17,20,.92); backdrop-filter: blur(6px); transition: transform .25s; font-size: .92rem; }
+.reader-top { position: fixed; top: 0; left: 0; right: 0; z-index: 10; display: flex; justify-content: space-between; align-items: center; gap: .8rem; padding: .55rem .9rem; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(6px); border-bottom: 1px solid var(--line); transition: transform .25s; font-size: .92rem; }
 .reader-top.hide { transform: translateY(-100%); }
 .reader-top b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.reader-top a { text-decoration: none; color: #cfcabf; flex: none; }
+.reader-top a { text-decoration: none; color: var(--dim); flex: none; }
 .reader { max-width: 720px; margin: 0 auto; padding: 3rem 0 1rem; }
-.panel { position: relative; margin: 0 0 6px; container-type: inline-size; }
+.panel { position: relative; margin: 0 0 6px; container-type: inline-size; background: var(--gap); }
 .panel > img { display: block; width: 100%; height: auto; }
 .fx { position: absolute; transform: translate(-50%, -50%); pointer-events: none; }
 .bubble { position: absolute; transform: translate(-50%, -50%); width: max-content; background: #fff; color: #111; padding: .5em .8em; border-radius: 1em; font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif; font-size: clamp(13px, 3.4cqw, 22px); line-height: 1.6; letter-spacing: .02em; max-width: 46%; box-shadow: 0 1px 4px rgba(0,0,0,.35); }
@@ -282,16 +285,16 @@ h1, h2 { font-weight: 700; }
 .bubble .spk { display: block; font-size: .72em; color: #888; margin-bottom: .15em; }
 .reader-nav { display: flex; justify-content: space-between; padding: 1.4rem .9rem 0; font-size: .98rem; }
 .reader-nav a { text-decoration: none; }
-.progress { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; height: 3px; background: rgba(255,255,255,.08); }
-.progress i { display: block; height: 100%; width: 0; background: #c9a856; transition: width .2s; }
-.progress span { position: absolute; right: .6rem; bottom: .5rem; font-size: .72rem; color: #9a958a; }
+.progress { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; height: 3px; background: var(--line); }
+.progress i { display: block; height: 100%; width: 0; background: var(--acc); transition: width .2s; }
+.progress span { position: absolute; right: .6rem; bottom: .5rem; font-size: .72rem; color: var(--dim); }
 /* 角色頁 */
 .char-page { max-width: 560px; margin: 0 auto; padding: 3.6rem 1.2rem 2rem; text-align: center; }
 .char-page .portrait { width: min(70%, 300px); border-radius: 10px; margin-bottom: 1rem; }
 .char-page h1 { font-size: 1.4rem; margin-bottom: .8rem; }
-.card-text { text-align: left; color: #b9b4a8; font-size: .92rem; white-space: pre-wrap; }
+.card-text { text-align: left; color: var(--dim); font-size: .92rem; white-space: pre-wrap; }
 /* footer */
-.site-foot { text-align: center; color: #7a766c; font-size: .82rem; padding: 2.5rem 1rem 3.5rem; }
-.site-foot a { color: #9a958a; }
+.site-foot { text-align: center; color: var(--dim); font-size: .82rem; padding: 2.5rem 1rem 3.5rem; }
+.site-foot a { color: var(--dim); }
 .foot-links { margin: .4rem 0; }
 `;
