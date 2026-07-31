@@ -20,7 +20,7 @@ comic-studio 的定位:**人審人調的工作台+可執行的輸出標準**。�
 2. **生圖**:逐格 image provider(參考圖:角色卡 ref 必附;鏈式參考時**首圖先驗過再開鏈**——第一張的風格會傳染整條線;暗景要明令「NOT photorealistic」)。存 `cand-N.png`,不覆蓋舊候選。
 3. **人排版**(UI):這一步是人的;agent 不要動 bubbles 內容。
 4. **驗收**:逐格驗(角色一致/風格一致/表情到位/世界觀無破格——現代物件=紅線)。
-5. **匯出**:呼叫 `buildReaderFiles`(或跑消費 repo 的 node 匯出腳本)。**逐項達標,不要輸出到一半宣稱完成**:多頁站/每章 SEO/角色頁/兩層 SW 快取(版本=內容雜湊,免手動 bump)/sitemap+robots(有 site.url 時)。
+5. **匯出**:呼叫 `buildReaderFiles`(或跑消費 repo 的 node 匯出腳本)。**逐項達標,不要輸出到一半宣稱完成**:多頁站/每章 SEO/角色頁/兩層 SW 快取(版本=內容雜湊,免手動 bump)/sitemap+robots(有 site.url 時)。**字型要自己複製**:`buildReaderFiles` 只產文字檔,`assets/fonts/comic-tc.woff2` 要複製到 `dist/fonts/`;複製不了就傳 `fontPath: null`,否則 SHELL 快取 addAll 會整包失敗、離線直接壞掉。
 6. **發佈**:git push 到站台 repo(參考消費 repo 的 `發佈.sh` 模式:匯出→同步→BMC 泡效果→push)。UI 做不到 push,這一步永遠在 CLI。
 
 ## 驗收底線

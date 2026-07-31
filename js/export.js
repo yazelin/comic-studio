@@ -10,12 +10,15 @@
 
 const DEFAULT_COLORS = { bg: '#f4f1ea', ink: '#2a2622', dim: '#7a7266', line: 'rgba(0,0,0,.08)', accent: '#b98d2f', panelGap: '#e9e4d8' };
 
-export function buildReaderFiles({ title, chapters, characters = [], site = {}, cover = null, assetsVersion = null }) {
+export function buildReaderFiles({ title, chapters, characters = [], site = {}, cover = null, assetsVersion = null, fontPath = 'fonts/comic-tc.woff2' }) {
   const KEY = 'comic-' + (site.storageKey || title);
   const C = { ...DEFAULT_COLORS, ...(site.colors || {}) };
   const files = [];
   const imagePaths = chapters.flatMap(ch => ch.panels.flatMap(p => [p.image, ...(p.effects || []).map(f => f.image)]));
-  for (const c of characters) if (c.image) imagePaths.push(c.image);
+  for (const c of characters) {
+    if (c.image) imagePaths.push(c.image);
+    for (const s of c.sheets || []) imagePaths.push(s.image);
+  }
   if (cover) imagePaths.push(cover);
 
   files.push({ path: 'style.css', content: `:root{--bg:${C.bg};--ink:${C.ink};--dim:${C.dim};--line:${C.line};--acc:${C.accent};--gap:${C.panelGap}}\n` + SITE_CSS });
@@ -46,7 +49,10 @@ export function buildReaderFiles({ title, chapters, characters = [], site = {}, 
   }
 
   // SW:SHELL=頁面殼(版本=殼內容雜湊,改版自動 bump);ASSET=圖(版本=路徑清單雜湊)。
-  const shellPaths = ['./', ...files.map(f => './' + f.path), './icon-192.png', './icon-512.png'];
+  // 字型進 SHELL:SW 用 addAll,少一個檔整包快取失敗——所以複製不成功時 bake 會傳 fontPath=null,
+  // 頁面照樣能看(@font-face 找不到檔就退回系統字型堆疊),只是失去跨裝置一致。
+  const shellPaths = ['./', ...files.map(f => './' + f.path), './icon-192.png', './icon-512.png',
+    ...(fontPath ? ['./' + fontPath] : [])];
   const shellHash = hash(files.map(f => f.content).join(' '));
   // 圖換內容但檔名不變是常態(重烙同名格)——版本必須來自內容,否則舊快取蓋新圖
   const assetHash = assetsVersion || hash(imagePaths.join('\n'));
@@ -144,7 +150,7 @@ function readHtml({ title, chapters, i, site }) {
     const bubbles = (p.bubbles || []).map(b => {
       const spk = b.speaker && (b.type || 'speech') !== 'narration' ? `<span class="spk">${esc(b.speaker)}</span>` : '';
       const fs = b.fs ? `font-size:${b.fs}cqw;` : '';
-      return `<div class="bubble ${esc(b.type || 'speech')}" style="left:${b.x}%;top:${b.y}%;${b.w ? `max-width:${b.w}%;` : ''}${fs}">${spk}${esc(b.text)}</div>`;
+      return `<div class="bubble ${esc(b.type || 'speech')} t-${esc(b.tail || 'bottom')}" style="left:${b.x}%;top:${b.y}%;${b.w ? `max-width:${b.w}%;` : ''}${fs}">${spk}${esc(b.text)}</div>`;
     }).join('');
     return `<div class="panel" data-p="${pi}"><img src="../${esc(p.image)}" alt="" loading="lazy">${fx}${bubbles}</div>`;
   }).join('\n');
@@ -167,6 +173,7 @@ function charHtml({ title, c, site }) {
 ${c.image ? `<img class="portrait" src="../${esc(c.image)}" alt="${esc(c.name)}">` : ''}
 <h1>${esc(c.name)}</h1>
 ${intro ? `<p class="card-text">${esc(intro)}</p>` : ''}
+${(c.sheets || []).map(s => `<figure class="sheet"><img src="../${esc(s.image)}" alt="${esc(c.name)}${esc(s.label)}" loading="lazy"><figcaption>${esc(s.label)}</figcaption></figure>`).join('\n')}
 </main>` + footer(site, `char/${c.id}.html`);
 }
 
@@ -263,8 +270,12 @@ function esc(s) {
 
 // ── 全站樣式 ──
 
-const SITE_CSS = `* { margin: 0; box-sizing: border-box; }
-body { background: var(--bg); color: var(--ink); font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif; line-height: 1.7; }
+// 字型自架:系統堆疊在 Android/Linux 常常掉到別的字型,同一本書換裝置就變樣;
+// 氣泡位置與字級是排版時用眼睛喬的,字一換就跑掉。字型檔由 bake.js 複製進 dist/fonts/。
+// font-display:block——晚一點顯示,好過先用系統字排好再換字跳動。
+const SITE_CSS = `@font-face { font-family: 'Comic TC'; src: url('fonts/comic-tc.woff2') format('woff2'); font-weight: 100 900; font-display: block; }
+* { margin: 0; box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: 'Comic TC', "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif; line-height: 1.7; }
 a { color: var(--ink); }
 h1, h2 { font-weight: 700; }
 /* 首頁 */
@@ -293,7 +304,14 @@ h1, h2 { font-weight: 700; }
 .panel { position: relative; margin: 0 0 6px; container-type: inline-size; background: var(--gap); }
 .panel > img { display: block; width: 100%; height: auto; }
 .fx { position: absolute; transform: translate(-50%, -50%); pointer-events: none; }
-.bubble { position: absolute; transform: translate(-50%, -50%); width: max-content; background: #fff; color: #111; padding: .5em .8em; border-radius: 1em; font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif; font-size: clamp(13px, 3.4cqw, 22px); line-height: 1.6; letter-spacing: .02em; max-width: 46%; box-shadow: 0 1px 4px rgba(0,0,0,.35); }
+.bubble { position: absolute; transform: translate(-50%, -50%); width: max-content; background: #fff; color: #111; padding: .5em .8em; border-radius: 1em; font-family: 'Comic TC', "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif; font-size: clamp(13px, 3.4cqw, 22px); line-height: 1.6; letter-spacing: .02em; max-width: 46%; box-shadow: 0 1px 4px rgba(0,0,0,.35); }
+/* 對白泡的尾巴——只有對白有;四方向置中,t-none 不要 */
+.bubble.speech::after { content: ''; position: absolute; width: 0; height: 0; border: .5em solid transparent; }
+.bubble.speech.t-none::after { content: none; }
+.bubble.speech.t-bottom::after { top: 100%; left: 50%; margin: -1px 0 0 -.5em; border-bottom: 0; border-top-color: #fff; }
+.bubble.speech.t-top::after { bottom: 100%; left: 50%; margin: 0 0 -1px -.5em; border-top: 0; border-bottom-color: #fff; }
+.bubble.speech.t-left::after { right: 100%; top: 50%; margin: -.5em -1px 0 0; border-left: 0; border-right-color: #fff; }
+.bubble.speech.t-right::after { left: 100%; top: 50%; margin: -.5em 0 0 -1px; border-right: 0; border-left-color: #fff; }
 .bubble.thought { background: none; box-shadow: none; border: none; color: #1c1a17; font-weight: 500; text-shadow: 0 0 6px #fff, 0 0 3px #fff, 0 0 1px #fff, 0 0 10px rgba(255,255,255,.8); }
 .bubble.narration { background: rgba(16,16,20,.72); color: #f2f0ea; border-radius: 3px; border: none; padding: .55em .9em; font-weight: 400; }
 .bubble.sfx { background: none; box-shadow: none; color: #111; font-weight: 900; font-size: clamp(22px, 7cqw, 44px); letter-spacing: .06em; transform: translate(-50%,-50%) rotate(-6deg); text-shadow: 1px 1px 0 #fff, -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff; }
@@ -308,6 +326,9 @@ h1, h2 { font-weight: 700; }
 .char-page .portrait { width: min(70%, 300px); border-radius: 10px; margin-bottom: 1rem; }
 .char-page h1 { font-size: 1.4rem; margin-bottom: .8rem; }
 .card-text { text-align: left; color: var(--dim); font-size: .92rem; white-space: pre-wrap; }
+.char-page .sheet { margin: 1.8rem 0 0; }
+.char-page .sheet img { width: 100%; border-radius: 10px; display: block; }
+.char-page .sheet figcaption { color: var(--dim); font-size: .82rem; margin-top: .4rem; }
 /* footer */
 .site-foot { text-align: center; color: var(--dim); font-size: .82rem; padding: 2.8rem 1rem 3.5rem; border-top: 1px solid var(--line); margin-top: 2.5rem; }
 .site-foot a { color: color-mix(in srgb, var(--ink) 72%, transparent); }

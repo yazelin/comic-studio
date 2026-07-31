@@ -169,7 +169,17 @@ $('#do-export').onclick = async () => {
         image = `imgs/char-${c.id}.png`;
         imageBlobs.push({ path: image, blob: store.dataURLtoBlob('data:image/png;base64,' + b64) });
       } catch { /* 沒 ref 圖就純文字頁 */ }
-      characters.push({ id: c.id, name: c.name, card: c.card || '', bio: c.bio || '', image });
+      const sheets = [];
+      for (const s of data.CHAR_SHEETS) {
+        if (s.key === 'ref') continue;
+        try {
+          const b64 = await store.readBlobB64(`characters/${c.id}/${s.file}`);
+          const path = `imgs/char-${c.id}-${s.key}.png`;
+          imageBlobs.push({ path, blob: store.dataURLtoBlob('data:image/png;base64,' + b64) });
+          sheets.push({ label: s.label, image: path });
+        } catch { /* 沒這張設定表就不放 */ }
+      }
+      characters.push({ id: c.id, name: c.name, card: c.card || '', bio: c.bio || '', image, sheets });
     }
     // 封面(專案根 cover.png,可選)
     let cover = null;
@@ -180,27 +190,38 @@ $('#do-export').onclick = async () => {
     } catch { /* 沒封面就文字 hero */ }
 
     setStatus('#export-status', '寫入 dist/ …');
+    // 自架字型:從工作台自己的 assets 抓一份塞進 dist,匯出站才不吃使用者裝置有沒有裝中文字型
+    let fontBlob = null;
+    try {
+      const r = await fetch(new URL('../assets/fonts/comic-tc.woff2', import.meta.url));
+      if (r.ok) fontBlob = await r.blob();
+    } catch { /* 抓不到就退回系統字型堆疊,不擋匯出 */ }
     const totalBytes = imageBlobs.reduce((n, im) => n + im.blob.size, 0);
-    const files = buildReaderFiles({ title: app.meta.title, chapters, characters, site: app.meta.site || {}, cover, assetsVersion: imageBlobs.length + '-' + totalBytes });
+    const files = buildReaderFiles({ title: app.meta.title, chapters, characters, site: app.meta.site || {}, cover, assetsVersion: imageBlobs.length + '-' + totalBytes, fontPath: fontBlob ? 'fonts/comic-tc.woff2' : null });
     for (const f of files) await store.writeText('dist/' + f.path, f.content);
     for (const im of imageBlobs) await store.writeBlob('dist/' + im.path, im.blob);
+    if (fontBlob) await store.writeBlob('dist/fonts/comic-tc.woff2', fontBlob);
     for (const size of [192, 512]) await store.writeBlob(`dist/icon-${size}.png`, await makeIcon(app.meta.title, size));
 
-    const total = files.length + imageBlobs.length + 2;
-    setStatus('#export-status', `完成:dist/ 共 ${total} 個檔、${chapters.length} 章。丟到任何靜態空間即可離線閱讀。`);
+    const total = files.length + imageBlobs.length + 2 + (fontBlob ? 1 : 0);
+    setStatus('#export-status', `完成:dist/ 共 ${total} 個檔、${chapters.length} 章。`
+      + (fontBlob ? '' : '(警告:字型沒複製進去,讀者裝置沒中文字型時排版會跑掉)')
+      + '丟到任何靜態空間即可離線閱讀。');
   } catch (e) {
     setStatus('#export-status', '匯出失敗:' + e.message, true);
   }
 };
 
-function makeIcon(title, size) {
+async function makeIcon(title, size) {
   const c = document.createElement('canvas');
   c.width = c.height = size;
   const ctx = c.getContext('2d');
   ctx.fillStyle = '#101013';
   ctx.fillRect(0, 0, size, size);
   ctx.fillStyle = '#eceae4';
-  ctx.font = `700 ${size * 0.55}px "Noto Sans TC", sans-serif`;
+  // canvas 不會自己觸發 webfont 載入,沒先 load 就會用系統字畫出來
+  await document.fonts.load(`700 ${size * 0.55}px "Comic TC"`).catch(() => {});
+  ctx.font = `700 ${size * 0.55}px 'Comic TC', "Noto Sans TC", sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText((title || '漫').slice(0, 1), size / 2, size / 2 + size * 0.03);

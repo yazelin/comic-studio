@@ -67,7 +67,7 @@ assert.ok(idx.includes('測試漫畫'));
 const manifest = JSON.parse(files.find(f => f.path === 'manifest.json').content);
 assert.equal(manifest.name, '測試漫畫');
 const rd = files.find(f => f.path === 'read/1.html').content;
-assert.ok(rd.includes('哈囉') && rd.includes('class="bubble speech"'), '章頁要內嵌氣泡');
+assert.ok(rd.includes('哈囉') && rd.includes('class="bubble speech t-'), '章頁要內嵌氣泡');
 
 // ── provider request builders(不打網路,只驗組裝)──
 const codex = buildCodexRequest({ baseurl: 'http://h:8000/', apiKey: 'K', prompt: 'p', refImagesB64: ['AAA'], count: 2, size: '1024x1536' });
@@ -266,3 +266,48 @@ console.log('character sheets ok');
   }
   console.log('studio PWA ok');
 }
+
+// ── 自架字型:CSS 宣告、進 SHELL 快取、抓不到時要能退場 ──
+const withFont = buildReaderFiles({ title: 'T', chapters: [{ title: 'C', panels: [{ image: 'i.png', bubbles: [] }] }] });
+const fcss = withFont.find(f => f.path === 'style.css').content;
+assert.ok(fcss.includes("@font-face") && fcss.includes("fonts/comic-tc.woff2"), '匯出 CSS 要宣告自架字型');
+assert.ok(fcss.includes("font-family: 'Comic TC'"), '內文要真的用到自架字型');
+assert.ok(withFont.find(f => f.path === 'sw.js').content.includes('./fonts/comic-tc.woff2'), '字型要進 SHELL 快取,否則離線變系統字');
+const noFont = buildReaderFiles({ title: 'T', chapters: [{ title: 'C', panels: [{ image: 'i.png', bubbles: [] }] }], fontPath: null });
+assert.ok(!noFont.find(f => f.path === 'sw.js').content.includes('comic-tc.woff2'),
+  '複製不到字型時不可列進 SHELL——SW 用 addAll,少一個檔整包快取會失敗');
+console.log('self-hosted font ok');
+
+// ── 氣泡尾巴 ──
+const tails = buildReaderFiles({ title: 'T', chapters: [{ title: 'C', panels: [{ image: 'i.png', bubbles: [
+  { type: 'speech', text: '預設', x: 30, y: 30 },
+  { type: 'speech', text: '朝左', x: 60, y: 60, tail: 'left' },
+  { type: 'speech', text: '不要', x: 80, y: 20, tail: 'none' },
+  { type: 'thought', text: '內心', x: 10, y: 10 },
+] }] }] });
+const tr = tails.find(f => f.path === 'read/1.html').content;
+assert.ok(tr.includes('class="bubble speech t-bottom"'), '對白泡預設朝下的尾巴');
+assert.ok(tr.includes('class="bubble speech t-left"'), '尾巴方向要寫進 class');
+assert.ok(tr.includes('class="bubble speech t-none"'), '可以關掉尾巴');
+const tcss = tails.find(f => f.path === 'style.css').content;
+for (const d of ['bottom', 'top', 'left', 'right']) {
+  assert.ok(tcss.includes(`.bubble.speech.t-${d}::after`), '尾巴 CSS 少了方向:' + d);
+}
+assert.ok(tcss.includes('.bubble.speech.t-none::after { content: none;'), 't-none 要真的關掉');
+assert.ok(!tcss.includes('.bubble.thought.t-'), '只有對白泡有尾巴');
+console.log('bubble tails ok');
+
+// ── 工作台預覽與匯出必須同款(排版靠眼睛喬,兩邊不一樣就白排) ──
+{
+  const fs = await import('node:fs');
+  const studioCss = fs.readFileSync('css/studio.css', 'utf8');
+  assert.ok(studioCss.includes("font-family: 'Comic TC'") && studioCss.includes('comic-tc.woff2'),
+    '工作台要載同一支字型,否則預覽字級跟成品對不起來');
+  for (const d of ['bottom', 'top', 'left', 'right', 'none']) {
+    assert.ok(studioCss.includes(`.bubble.speech.t-${d}::after`), '工作台缺尾巴樣式:' + d);
+  }
+  assert.ok(fs.readFileSync('sw.js', 'utf8').includes('./assets/fonts/comic-tc.woff2'), '字型要進工作台離線殼');
+  assert.ok(fs.existsSync('assets/fonts/comic-tc.woff2'), '字型檔要在 repo 裡');
+  assert.ok(fs.existsSync('assets/fonts/OFL.txt'), 'OFL 授權要隨字型附上');
+}
+console.log('studio/export parity ok');
