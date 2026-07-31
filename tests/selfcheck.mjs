@@ -279,19 +279,25 @@ assert.ok(!noFont.find(f => f.path === 'sw.js').content.includes('comic-tc.woff2
 console.log('self-hosted font ok');
 
 // ── 氣泡尾巴 ──
+const TAIL_DIRS = ['bottom', 'bottom-left', 'bottom-right', 'top', 'top-left', 'top-right', 'left', 'right'];
 const tails = buildReaderFiles({ title: 'T', chapters: [{ title: 'C', panels: [{ image: 'i.png', bubbles: [
   { type: 'speech', text: '預設', x: 30, y: 30 },
-  { type: 'speech', text: '朝左', x: 60, y: 60, tail: 'left' },
+  ...TAIL_DIRS.map((d, i) => ({ type: 'speech', text: d, x: 10 + i * 9, y: 50, tail: d })),
   { type: 'speech', text: '不要', x: 80, y: 20, tail: 'none' },
   { type: 'thought', text: '內心', x: 10, y: 10 },
 ] }] }] });
 const tr = tails.find(f => f.path === 'read/1.html').content;
 assert.ok(tr.includes('class="bubble speech t-bottom"'), '對白泡預設朝下的尾巴');
-assert.ok(tr.includes('class="bubble speech t-left"'), '尾巴方向要寫進 class');
 assert.ok(tr.includes('class="bubble speech t-none"'), '可以關掉尾巴');
 const tcss = tails.find(f => f.path === 'style.css').content;
-for (const d of ['bottom', 'top', 'left', 'right']) {
+for (const d of TAIL_DIRS) {
+  assert.ok(tr.includes(`class="bubble speech t-${d}"`), '每顆泡自己的方向要寫進 class:' + d);
   assert.ok(tcss.includes(`.bubble.speech.t-${d}::after`), '尾巴 CSS 少了方向:' + d);
+}
+for (const d of ['bottom-left', 'bottom-right', 'top-left', 'top-right']) {
+  const rule = tcss.slice(tcss.lastIndexOf(`.bubble.speech.t-${d}::after`)).split('}')[0];
+  assert.ok(rule.includes('clip-path: polygon('), '斜角尾巴要用直角三角形切,不是轉開的等腰三角形:' + d);
+  assert.ok(/(top|bottom): 100%/.test(rule) && /(left|right): 20%/.test(rule), '斜角尾巴底邊要貼在泡緣:' + d);
 }
 assert.ok(tcss.includes('.bubble.speech.t-none::after { content: none;'), 't-none 要真的關掉');
 assert.ok(!tcss.includes('.bubble.thought.t-'), '只有對白泡有尾巴');
@@ -303,8 +309,12 @@ console.log('bubble tails ok');
   const studioCss = fs.readFileSync('css/studio.css', 'utf8');
   assert.ok(studioCss.includes("font-family: 'Comic TC'") && studioCss.includes('comic-tc.woff2'),
     '工作台要載同一支字型,否則預覽字級跟成品對不起來');
-  for (const d of ['bottom', 'top', 'left', 'right', 'none']) {
+  for (const d of [...TAIL_DIRS, 'none']) {
     assert.ok(studioCss.includes(`.bubble.speech.t-${d}::after`), '工作台缺尾巴樣式:' + d);
+  }
+  const opts = fs.readFileSync('js/layout.js', 'utf8');
+  for (const d of [...TAIL_DIRS, 'none']) {
+    assert.ok(opts.includes(`value: '${d}'`), '氣泡編輯視窗選不到方向:' + d);
   }
   assert.ok(fs.readFileSync('sw.js', 'utf8').includes('./assets/fonts/comic-tc.woff2'), '字型要進工作台離線殼');
   assert.ok(fs.existsSync('assets/fonts/comic-tc.woff2'), '字型檔要在 repo 裡');

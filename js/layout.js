@@ -221,9 +221,14 @@ async function editBubble(b) {
         { value: 'narration', label: '旁白(淡黑底正黑體)' },
         { value: 'sfx', label: '效果字(CSS 版;要畫進圖用效果層)' },
       ] },
-      { key: 'tail', label: '尾巴方向(只對白泡有效)', type: 'select', value: b.tail || 'bottom', options: [
+      // 每顆泡各自設定:同一格裡三顆泡的說話者位置不同,方向本來就該各選各的
+      { key: 'tail', label: '尾巴指向(這顆泡專屬;只對白泡有效)', type: 'select', value: b.tail || 'bottom', options: [
         { value: 'bottom', label: '下(預設)' },
+        { value: 'bottom-left', label: '左下' },
+        { value: 'bottom-right', label: '右下' },
         { value: 'top', label: '上' },
+        { value: 'top-left', label: '左上' },
+        { value: 'top-right', label: '右上' },
         { value: 'left', label: '左' },
         { value: 'right', label: '右' },
         { value: 'none', label: '不要尾巴' },

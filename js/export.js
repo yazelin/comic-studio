@@ -305,13 +305,23 @@ h1, h2 { font-weight: 700; }
 .panel > img { display: block; width: 100%; height: auto; }
 .fx { position: absolute; transform: translate(-50%, -50%); pointer-events: none; }
 .bubble { position: absolute; transform: translate(-50%, -50%); width: max-content; background: #fff; color: #111; padding: .5em .8em; border-radius: 1em; font-family: 'Comic TC', "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif; font-size: clamp(13px, 3.4cqw, 22px); line-height: 1.6; letter-spacing: .02em; max-width: 46%; box-shadow: 0 1px 4px rgba(0,0,0,.35); }
-/* 對白泡的尾巴——只有對白有;四方向置中,t-none 不要 */
+/* 對白泡的尾巴——只有對白有;八方向 + t-none 不要。
+   上下左右=border 三角形。斜角改用 clip-path 切直角三角形:轉開三角形會讓底邊離開泡緣、
+   只剩一小截露在外面(看起來像貼邊的扁片),直角三角形的底邊天生貼平,尖角自然指向斜方。 */
 .bubble.speech::after { content: ''; position: absolute; width: 0; height: 0; border: .5em solid transparent; }
 .bubble.speech.t-none::after { content: none; }
 .bubble.speech.t-bottom::after { top: 100%; left: 50%; margin: -1px 0 0 -.5em; border-bottom: 0; border-top-color: #fff; }
 .bubble.speech.t-top::after { bottom: 100%; left: 50%; margin: 0 0 -1px -.5em; border-top: 0; border-bottom-color: #fff; }
 .bubble.speech.t-left::after { right: 100%; top: 50%; margin: -.5em -1px 0 0; border-left: 0; border-right-color: #fff; }
 .bubble.speech.t-right::after { left: 100%; top: 50%; margin: -.5em 0 0 -1px; border-right: 0; border-left-color: #fff; }
+.bubble.speech.t-bottom-left::after,
+.bubble.speech.t-bottom-right::after,
+.bubble.speech.t-top-left::after,
+.bubble.speech.t-top-right::after { border: 0; background: #fff; width: .95em; height: .95em; }
+.bubble.speech.t-bottom-left::after { top: 100%; left: 20%; margin: -1px 0 0; clip-path: polygon(100% 0, 0 0, 0 100%); }
+.bubble.speech.t-bottom-right::after { top: 100%; right: 20%; margin: -1px 0 0; clip-path: polygon(0 0, 100% 0, 100% 100%); }
+.bubble.speech.t-top-left::after { bottom: 100%; left: 20%; margin: 0 0 -1px; clip-path: polygon(0 0, 100% 100%, 0 100%); }
+.bubble.speech.t-top-right::after { bottom: 100%; right: 20%; margin: 0 0 -1px; clip-path: polygon(100% 0, 100% 100%, 0 100%); }
 .bubble.thought { background: none; box-shadow: none; border: none; color: #1c1a17; font-weight: 500; text-shadow: 0 0 6px #fff, 0 0 3px #fff, 0 0 1px #fff, 0 0 10px rgba(255,255,255,.8); }
 .bubble.narration { background: rgba(16,16,20,.72); color: #f2f0ea; border-radius: 3px; border: none; padding: .55em .9em; font-weight: 400; }
 .bubble.sfx { background: none; box-shadow: none; color: #111; font-weight: 900; font-size: clamp(22px, 7cqw, 44px); letter-spacing: .06em; transform: translate(-50%,-50%) rotate(-6deg); text-shadow: 1px 1px 0 #fff, -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff; }
