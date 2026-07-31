@@ -184,11 +184,14 @@ $('#do-export').onclick = async () => {
     }
     // 封面(專案根 cover.png,可選)
     let cover = null;
+    let ogBlob = null;
     try {
       const b64 = await store.readBlobB64('cover.png');
       cover = 'imgs/cover.png';
-      imageBlobs.push({ path: cover, blob: store.dataURLtoBlob('data:image/png;base64,' + b64) });
-    } catch { /* 沒封面就文字 hero */ }
+      const coverBlob = store.dataURLtoBlob('data:image/png;base64,' + b64);
+      imageBlobs.push({ path: cover, blob: coverBlob });
+      ogBlob = await makeOg(coverBlob);   // 社群分享圖:1.91:1 JPEG,沒封面就沒有(退回 icon)
+    } catch { /* 沒封面就文字 hero,也沒有 og 大圖 */ }
 
     setStatus('#export-status', '寫入 dist/ …');
     // 自架字型:從工作台自己的 assets 抓一份塞進 dist,匯出站才不吃使用者裝置有沒有裝中文字型
@@ -198,13 +201,14 @@ $('#do-export').onclick = async () => {
       if (r.ok) fontBlob = await r.blob();
     } catch { /* 抓不到就退回系統字型堆疊,不擋匯出 */ }
     const totalBytes = imageBlobs.reduce((n, im) => n + im.blob.size, 0);
-    const files = buildReaderFiles({ title: app.meta.title, chapters, characters, site: app.meta.site || {}, cover, assetsVersion: imageBlobs.length + '-' + totalBytes, fontPath: fontBlob ? 'fonts/comic-tc.woff2' : null });
+    const files = buildReaderFiles({ title: app.meta.title, chapters, characters, site: app.meta.site || {}, cover, assetsVersion: imageBlobs.length + '-' + totalBytes, fontPath: fontBlob ? 'fonts/comic-tc.woff2' : null, ogPath: ogBlob ? 'og.jpg' : null });
     for (const f of files) await store.writeText('dist/' + f.path, f.content);
     for (const im of imageBlobs) await store.writeBlob('dist/' + im.path, im.blob);
     if (fontBlob) await store.writeBlob('dist/fonts/comic-tc.woff2', fontBlob);
+    if (ogBlob) await store.writeBlob('dist/og.jpg', ogBlob);
     for (const size of [192, 512]) await store.writeBlob(`dist/icon-${size}.png`, await makeIcon(app.meta.title, size));
 
-    const total = files.length + imageBlobs.length + 2 + (fontBlob ? 1 : 0);
+    const total = files.length + imageBlobs.length + 2 + (fontBlob ? 1 : 0) + (ogBlob ? 1 : 0);
     setStatus('#export-status', `完成:dist/ 共 ${total} 個檔、${chapters.length} 章。`
       + (fontBlob ? '' : '(警告:字型沒複製進去,讀者裝置沒中文字型時排版會跑掉)')
       + '丟到任何靜態空間即可離線閱讀。');
@@ -212,6 +216,20 @@ $('#do-export').onclick = async () => {
     setStatus('#export-status', '匯出失敗:' + e.message, true);
   }
 };
+
+// 社群分享圖:等比放大到蓋滿 1200x630 再裁,錨點偏上(1/3)免得裁掉臉。
+// 與 tools/make-og.mjs 的 ffmpeg 版同一套裁法,CLI 與 UI 匯出結果一致。
+async function makeOg(coverBlob) {
+  const W = 1200, H = 630;
+  const bmp = await createImageBitmap(coverBlob);
+  const c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  const ctx = c.getContext('2d');
+  const scale = Math.max(W / bmp.width, H / bmp.height);
+  const w = bmp.width * scale, h = bmp.height * scale;
+  ctx.drawImage(bmp, (W - w) / 2, (H - h) / 3, w, h);
+  return new Promise(ok => c.toBlob(ok, 'image/jpeg', 0.88));
+}
 
 async function makeIcon(title, size) {
   const c = document.createElement('canvas');

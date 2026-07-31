@@ -37,7 +37,7 @@ export const THEMES = {
     surface: '#1b1e2b', accentSoft: '#f2a3b3' },
 };
 
-export function buildReaderFiles({ title, chapters, characters = [], site = {}, cover = null, assetsVersion = null, fontPath = 'fonts/comic-tc.woff2' }) {
+export function buildReaderFiles({ title, chapters, characters = [], site = {}, cover = null, assetsVersion = null, fontPath = 'fonts/comic-tc.woff2', ogPath = null }) {
   const KEY = 'comic-' + (site.storageKey || title);
   // 疊三層:暖紙打底(範本沒給的欄位有值可用)→ 選定範本 → site.colors 逐項覆蓋。名字打錯就退回暖紙。
   const C = { ...THEMES.paper, ...(THEMES[site.theme] || {}), ...(site.colors || {}) };
@@ -51,7 +51,9 @@ export function buildReaderFiles({ title, chapters, characters = [], site = {}, 
 
   files.push({ path: 'style.css', content: `:root{--bg:${C.bg};--ink:${C.ink};--dim:${C.dim};--line:${C.line};--acc:${C.accent};--gap:${C.panelGap};--bub:${C.bubbleBg};--bub-ink:${C.bubbleInk};--narr:${C.narrationBg};--narr-ink:${C.narrationInk};--surf:${C.surface};--acc2:${C.accentSoft}}\n` + SITE_CSS });
   files.push({ path: 'app.js', content: appJs(KEY, chapters.map(c => c.title)) });
-  site = { ...site, _bg: C.bg };
+  // og:image 沒有專屬圖時退回 app icon。icon 是 512 方形,社群平台會裁掉或縮成小圖——
+  // 要大圖卡就得給 1.91:1 的 og(呼叫端產,見 tools/make-og.mjs);有它才開 summary_large_image。
+  site = { ...site, _bg: C.bg, _og: ogPath };
   files.push({ path: 'index.html', content: indexHtml({ title, chapters, characters, site, cover }) });
   chapters.forEach((ch, i) => {
     files.push({ path: `read/${i + 1}.html`, content: readHtml({ title, chapters, i, site }) });
@@ -106,7 +108,10 @@ ${abs ? `<link rel="canonical" href="${esc(abs)}">
 <meta property="og:title" content="${esc(pageTitle)}">
 ${desc ? `<meta property="og:description" content="${esc(desc)}">` : ''}
 <meta property="og:url" content="${esc(abs)}">
-<meta property="og:image" content="${esc(base + '/icon-512.png')}">` : ''}
+<meta property="og:image" content="${esc(base + '/' + (site._og || 'icon-512.png'))}">
+${site._og ? `<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">` : ''}` : ''}
 <link rel="manifest" href="${rel(path)}manifest.json">
 <link rel="icon" href="${rel(path)}icon-192.png">
 <meta name="theme-color" content="${site._bg}">
