@@ -192,7 +192,7 @@ assert.ok(swFx.includes('cs-shell-') && swFx.includes('cs-asset-'), '兩層快�
 const homePage = filesFx.find(f => f.path === 'index.html').content;
 assert.ok(homePage.includes('char/yaze.html') && idx.includes('read/2.html') === false, '首頁列章節與角色');
 assert.ok(homePage.includes('resume-slot'), '首頁有續讀槽');
-assert.ok(homePage.includes('原作小說') && homePage.includes('GitHub'), 'footer 連結(有給的才渲染)');
+assert.ok(homePage.includes('原作小說') && homePage.includes('aria-label="GitHub"') && homePage.includes('<svg'), 'footer=原作小說+SVG 圖示三件套');
 // 無 site 設定也要能匯出(不生 sitemap/robots)
 const bare = buildReaderFiles({ title: 'T', chapters: [{ title: 'C', panels: [{ image: 'imgs/a.png', bubbles: [] }] }] });
 assert.ok(!bare.map(f => f.path).includes('sitemap.xml'), '無 url 不生 sitemap');
@@ -224,3 +224,9 @@ console.log('palette ok');
 const av = buildReaderFiles({ title: 'T', chapters: [{ title: 'C', panels: [{ image: 'imgs/a.png', bubbles: [] }] }], assetsVersion: 'v-123' });
 assert.ok(av.find(f => f.path === 'sw.js').content.includes("cs-asset-v-123"), 'assetsVersion 要進 SW');
 console.log('asset version ok');
+
+// ── 三件套只渲染有給的連結 ──
+const noLinks = buildReaderFiles({ title: 'T', chapters: [{ title: 'C', panels: [{ image: 'i.png', bubbles: [] }] }], site: { links: { github: 'https://g' } } });
+const nl = noLinks.find(f => f.path === 'index.html').content;
+assert.ok(nl.includes('aria-label="GitHub"') && !nl.includes('請我喝咖啡'), '沒給的連結不渲染');
+console.log('footer trio ok');
