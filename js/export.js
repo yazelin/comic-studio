@@ -10,7 +10,7 @@
 
 const DEFAULT_COLORS = { bg: '#f4f1ea', ink: '#2a2622', dim: '#7a7266', line: 'rgba(0,0,0,.08)', accent: '#b98d2f', panelGap: '#e9e4d8' };
 
-export function buildReaderFiles({ title, chapters, characters = [], site = {}, cover = null }) {
+export function buildReaderFiles({ title, chapters, characters = [], site = {}, cover = null, assetsVersion = null }) {
   const KEY = 'comic-' + (site.storageKey || title);
   const C = { ...DEFAULT_COLORS, ...(site.colors || {}) };
   const files = [];
@@ -48,7 +48,8 @@ export function buildReaderFiles({ title, chapters, characters = [], site = {}, 
   // SW:SHELL=頁面殼(版本=殼內容雜湊,改版自動 bump);ASSET=圖(版本=路徑清單雜湊)。
   const shellPaths = ['./', ...files.map(f => './' + f.path), './icon-192.png', './icon-512.png'];
   const shellHash = hash(files.map(f => f.content).join(' '));
-  const assetHash = hash(imagePaths.join('\n'));
+  // 圖換內容但檔名不變是常態(重烙同名格)——版本必須來自內容,否則舊快取蓋新圖
+  const assetHash = assetsVersion || hash(imagePaths.join('\n'));
   files.push({ path: 'sw.js', content: swJs({ title, shellPaths, imagePaths: imagePaths.map(p => './' + p), shellHash, assetHash }) });
   return files;
 }

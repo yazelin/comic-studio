@@ -219,3 +219,8 @@ assert.ok(JSON.parse(warm.find(f => f.path === 'manifest.json').content).theme_c
 const dark = buildReaderFiles({ title: 'T', chapters: [{ title: 'C', panels: [{ image: 'imgs/a.png', bubbles: [] }] }], site: { colors: { bg: '#111114' } } });
 assert.ok(dark.find(f => f.path === 'style.css').content.includes('--bg:#111114'), 'site.colors 可覆寫');
 console.log('palette ok');
+
+// ── ASSET 版本可由內容決定 ──
+const av = buildReaderFiles({ title: 'T', chapters: [{ title: 'C', panels: [{ image: 'imgs/a.png', bubbles: [] }] }], assetsVersion: 'v-123' });
+assert.ok(av.find(f => f.path === 'sw.js').content.includes("cs-asset-v-123"), 'assetsVersion 要進 SW');
+console.log('asset version ok');
