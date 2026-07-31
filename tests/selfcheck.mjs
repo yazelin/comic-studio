@@ -330,7 +330,7 @@ console.log('studio/export parity ok');
 
   for (const k of ['paper', 'token-unlimited', 'workbench', 'midnight']) {
     assert.ok(THEMES[k], '少了範本:' + k);
-    for (const field of ['bg', 'ink', 'dim', 'line', 'accent', 'panelGap', 'bubbleBg', 'bubbleInk', 'narrationBg', 'narrationInk']) {
+    for (const field of ['bg', 'ink', 'dim', 'line', 'accent', 'panelGap', 'bubbleBg', 'bubbleInk', 'narrationBg', 'narrationInk', 'surface', 'accentSoft']) {
       assert.ok(THEMES[k][field], `範本 ${k} 缺欄位 ${field}——缺一項就會被暖紙的值補上,悄悄長錯色`);
     }
   }
@@ -354,6 +354,13 @@ console.log('studio/export parity ok');
   }
   assert.ok(bodyCss.includes('background: var(--bub)') && bodyCss.includes('color: var(--bub-ink)'), '對白泡吃範本色');
   assert.ok(bodyCss.includes('background: var(--narr)'), '旁白條吃範本色');
+  // 分層:面色與副 accent 要真的被用到,不然就是掛在那裡的死 token
+  assert.ok(bodyCss.includes('background: var(--surf)'), '面色要真的用在某個元件上');
+  assert.ok(bodyCss.includes('color: var(--acc2)'), '副 accent 要真的用在某個元件上');
+  assert.ok(css({ theme: 'midnight' }).includes('--surf:#1b1e2b') && css({ theme: 'midnight' }).includes('--acc2:#f2a3b3'),
+    '深夜範本的面色與副 accent 直接取自 neko-tensei 的 --panel/--pink');
+  assert.ok(!/--acc2:#F6C945/i.test(css({ theme: 'token-unlimited' })),
+    '土金的副 accent 不可用金——金是保留色,只准出現在進度條那一處');
   console.log('themes ok');
 }
 
