@@ -80,7 +80,11 @@ let total = 0;
 for (const dir of chDirs) {
   const sbPath = join(root, 'chapters', dir, 'storyboard.json');
   if (!existsSync(sbPath)) continue;
-  const bad = lintStoryboard(JSON.parse(readFileSync(sbPath, 'utf8')), { chapter: dir, cast });
+  // 一次性說話者(守衛、考官、賓客…)不開角色卡,在 chapter.json 的 extras 宣告——
+  // 宣告過才算數,才擋得住把「守衛」打成「衛守」這種沒人會發現的錯字
+  const cj = join(root, 'chapters', dir, 'chapter.json');
+  const extras = existsSync(cj) ? (JSON.parse(readFileSync(cj, 'utf8')).extras || []) : [];
+  const bad = lintStoryboard(JSON.parse(readFileSync(sbPath, 'utf8')), { chapter: dir, cast: [...cast, ...extras] });
   total += bad.length;
   console.log(bad.length ? `\n[${dir}] ${bad.length} 條:\n` + bad.map(b => '  ' + b).join('\n') : `[${dir}] 通過`);
 }

@@ -163,6 +163,7 @@ $('#do-export').onclick = async () => {
     // 角色頁素材:名字+文字卡+ref 圖
     const characters = [];
     for (const c of await data.listCharacters()) {
+      if (c.hidden) continue; // 伏筆角色:生圖照用,但不上公開角色牆
       let image = null;
       try {
         const b64 = await store.readBlobB64(`characters/${c.id}/ref.png`);
