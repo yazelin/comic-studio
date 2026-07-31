@@ -9,6 +9,8 @@ comic-studio 的定位:**人審人調的工作台+可執行的輸出標準**。�
 - `characters/<id>/card.json{id,name,card,bio,must_not}` + **三張設定表** `ref.png`(立繪)/`expr.png`(表情集)/`pose.png`(動作集):card=英文生圖文字卡、bio=讀者向中文介紹(角色頁用)、must_not=不該出現的東西(模型會自己補帽子眼鏡現代服裝)
   - 生圖時立繪必附;該格 scene 有「表情」就附表情集,動作鏡頭附動作集,**參考圖總數上限 4 張**
   - 表情/動作集一定要以立繪當參考圖生成,否則等於重抽一個人
+- `chapters/<n>/chapter.json`:`title`(**真章名**,話數≠章號:第 1 話可能叫「序章」)、`extras`(本章一次性說話者:守衛、考官、賓客…不開角色卡,但要宣告,linter 只認宣告過的名字)
+- `characters/<id>/card.json` 的 `hidden: true`=**伏筆角色**:照樣當生圖角色(附參考圖、進 cast),但不上公開角色頁——臉還不能給讀者的人用這個
 - `chapters/<n>/storyboard.json`:分鏡=正本。**有角色的格,scene 必含「表情:」**(眼/眉/嘴的具體狀態)——表情缺席=生圖出呆臉,是分鏡層的責任
 - `chapters/<n>/panels/<pid>/`:`cand-N.png` 候選、`fx-N.png` 效果層、`panel.json{chosen,bubbles,effects}`
 - `panel.json` 的 bubbles=**文字正本**(人在排版層改過的字以此為準,別回頭讀 storyboard 蓋掉)
