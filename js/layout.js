@@ -161,7 +161,7 @@ async function redrawOverlays(wrap, st) {
     wrap.append(el);
   }
   st.bubbles.forEach((b, i) => {
-    const el = h('div', { class: 'bubble ' + b.type },
+    const el = h('div', { class: 'bubble ' + b.type + ' t-' + (b.tail || 'bottom') },
       b.speaker && b.type !== 'narration' ? h('span', { class: 'spk' }, b.speaker) : null,
       b.text,
       h('button', { class: 'del', onclick: ev => { ev.stopPropagation(); st.bubbles.splice(i, 1); redrawOverlays(wrap, st); } }, '×'),
@@ -221,6 +221,18 @@ async function editBubble(b) {
         { value: 'narration', label: '旁白(淡黑底正黑體)' },
         { value: 'sfx', label: '效果字(CSS 版;要畫進圖用效果層)' },
       ] },
+      // 每顆泡各自設定:同一格裡三顆泡的說話者位置不同,方向本來就該各選各的
+      { key: 'tail', label: '尾巴指向(這顆泡專屬;只對白泡有效)', type: 'select', value: b.tail || 'bottom', options: [
+        { value: 'bottom', label: '下(預設)' },
+        { value: 'bottom-left', label: '左下' },
+        { value: 'bottom-right', label: '右下' },
+        { value: 'top', label: '上' },
+        { value: 'top-left', label: '左上' },
+        { value: 'top-right', label: '右上' },
+        { value: 'left', label: '左' },
+        { value: 'right', label: '右' },
+        { value: 'none', label: '不要尾巴' },
+      ] },
       { key: 'w', label: '最大寬度(%)', value: String(b.w || 40) },
       { key: 'fs', label: '字級(留空=自動;數字=格寬%,自動約3.4)', value: b.fs ? String(b.fs) : '' },
     ],
@@ -230,6 +242,7 @@ async function editBubble(b) {
   b.text = r.text;
   b.speaker = r.speaker;
   b.type = r.type;
+  b.tail = r.tail;
   b.w = Math.min(90, Math.max(10, Number(r.w) || 40));
   const fs = parseFloat(r.fs);
   if (Number.isFinite(fs) && fs > 0) b.fs = Math.min(15, Math.max(1, fs)); else delete b.fs;

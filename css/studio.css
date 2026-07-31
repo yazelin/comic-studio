@@ -1,4 +1,12 @@
 /* ── 製版桌設計系統:墨黑/暖紙白/朱色/網點 ── */
+/* 自架字型:工作台跟匯出站要用同一支,否則排版時看到的氣泡大小跟成品不一樣。
+   font-display:block——寧可晚 0.x 秒顯示,也不要先用系統字排好版再換字跳動。 */
+@font-face {
+  font-family: 'Comic TC';
+  src: url('../assets/fonts/comic-tc.woff2') format('woff2');
+  font-weight: 100 900;
+  font-display: block;
+}
 :root {
   color-scheme: dark;
   --ink: #101013;        /* 底:墨 */
@@ -20,7 +28,7 @@ body {
   height: 100%;
   background: var(--ink);
   color: var(--fg);
-  font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+  font-family: 'Comic TC', "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
   font-size: 15px;
   line-height: 1.65;
   display: grid;
@@ -214,12 +222,31 @@ button:disabled { opacity: .45; cursor: default; }
 .ly-panel .pnum { position: absolute; top: -0.7rem; left: -0.4rem; z-index: 2; font-weight: 800; font-size: .78rem; background: var(--ink); border: 1.5px solid var(--fg); border-radius: 4px; padding: 0 .45em; box-shadow: 2px 2px 0 0 #d9482b55; }
 .bubble {
   position: absolute; transform: translate(-50%, -50%);
-  background: #fff; color: #111; padding: .45em .7em; border-radius: 1em;
-  font-size: clamp(13px, 3.4cqw, 22px); line-height: 1.4; max-width: 46%;
+  /* 內距/行高/字距要跟匯出站一字不差,否則預覽的換行位置跟成品不一樣,白排 */
+  background: #fff; color: #111; padding: .5em .8em; border-radius: 1em;
+  font-size: clamp(13px, 3.4cqw, 22px); line-height: 1.6; letter-spacing: .02em; max-width: 46%;
   cursor: grab; user-select: none; box-shadow: 0 1px 4px rgba(0,0,0,.5);
  width: max-content; }
 .bubble.thought { background: none; box-shadow: none; border: none; color: #1c1a17; font-weight: 500; text-shadow: 0 0 6px #fff, 0 0 3px #fff, 0 0 1px #fff, 0 0 10px rgba(255,255,255,.8); }
 .bubble.narration { background: rgba(16,16,20,.72); color: #f2f0ea; border-radius: 3px; border: none; font-weight: 400; }
+/* 對白泡的尾巴——只有對白有(內心是浮字、旁白是方框、效果字沒泡)。每顆泡各自選方向。
+   上下左右=border 三角形。斜角改用 clip-path 切直角三角形:轉開三角形會讓底邊離開泡緣、
+   只剩一小截露在外面(看起來像貼邊的扁片),直角三角形的底邊天生貼平,尖角自然指向斜方。
+   ponytail: 八方向定點,不做任意角度與沿邊滑動;真的不夠再說。 */
+.bubble.speech::after { content: ''; position: absolute; width: 0; height: 0; border: .5em solid transparent; }
+.bubble.speech.t-none::after { content: none; }
+.bubble.speech.t-bottom::after { top: 100%; left: 50%; margin: -1px 0 0 -.5em; border-bottom: 0; border-top-color: #fff; }
+.bubble.speech.t-top::after { bottom: 100%; left: 50%; margin: 0 0 -1px -.5em; border-top: 0; border-bottom-color: #fff; }
+.bubble.speech.t-left::after { right: 100%; top: 50%; margin: -.5em -1px 0 0; border-left: 0; border-right-color: #fff; }
+.bubble.speech.t-right::after { left: 100%; top: 50%; margin: -.5em 0 0 -1px; border-right: 0; border-left-color: #fff; }
+.bubble.speech.t-bottom-left::after,
+.bubble.speech.t-bottom-right::after,
+.bubble.speech.t-top-left::after,
+.bubble.speech.t-top-right::after { border: 0; background: #fff; width: .95em; height: .95em; }
+.bubble.speech.t-bottom-left::after { top: 100%; left: 20%; margin: -1px 0 0; clip-path: polygon(100% 0, 0 0, 0 100%); }
+.bubble.speech.t-bottom-right::after { top: 100%; right: 20%; margin: -1px 0 0; clip-path: polygon(0 0, 100% 0, 100% 100%); }
+.bubble.speech.t-top-left::after { bottom: 100%; left: 20%; margin: 0 0 -1px; clip-path: polygon(0 0, 100% 100%, 0 100%); }
+.bubble.speech.t-top-right::after { bottom: 100%; right: 20%; margin: 0 0 -1px; clip-path: polygon(100% 0, 100% 100%, 0 100%); }
 .bubble .spk { display: block; font-size: .72em; color: #888; }
 .bubble .del {
   position: absolute; top: -0.65em; right: -0.65em;
