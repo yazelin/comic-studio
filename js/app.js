@@ -5,6 +5,7 @@ import * as data from './data.js';
 import { loadProviders, saveProviders, isPersisted, applyProjectKeys } from './providers.js';
 import { refreshStoryboard } from './storyboard.js';
 import { refreshCharacters } from './characters.js';
+import { refreshWorld } from './world.js';
 import { refreshGenerate } from './generate.js';
 import { refreshLayout } from './layout.js';
 import { refreshBake } from './bake.js';
@@ -15,6 +16,7 @@ export const app = { meta: null, chapter: '' }; // 全站共享:專案 meta+目�
 const refreshers = {
   storyboard: refreshStoryboard,
   characters: refreshCharacters,
+  world: refreshWorld,
   generate: refreshGenerate,
   layout: refreshLayout,
   bake: refreshBake,

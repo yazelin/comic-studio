@@ -71,6 +71,20 @@ export function parseStoryboard(text) {
 
 // 角色多視角設定圖(character sheet):一張圖含多視角+表情差分,
 // 之後當每格生圖的參考圖,一致性比單張立繪更穩
+// 場景/道具參考圖:之後每一格都會拿它當鎖,所以要「乾淨的一張」——
+// 不放主角、不放故事事件,只有那個空間或那樣東西本身。
+export function buildWorldRefPrompt({ style, name, card, must_not }) {
+  return [
+    `畫風: ${style}`,
+    `場景／道具參考圖:${name}`,
+    `內容: ${card}`,
+    '這是一張美術設定用的參考圖:畫這個空間或這樣東西本身,不要有主角、不要演故事。',
+    '構圖清楚、光線平均、細節看得出材質,之後每一格都會拿這張當基準。',
+    must_not ? `絕對不可出現: ${must_not}` : '',
+    '重要:圖中不要出現任何文字、標籤、對白框或浮水印。',
+  ].filter(Boolean).join('\n');
+}
+
 export function buildCharacterSheetPrompt({ style, name, card }) {
   return [
     `畫風: ${style}`,

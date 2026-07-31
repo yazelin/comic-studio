@@ -10,6 +10,7 @@ const SHELL_FILES = [
   './css/studio.css',
   './js/app.js', './js/ui.js', './js/store.js', './js/data.js', './js/prompt.js',
   './js/providers.js', './js/providers-core.js', './js/storyboard.js', './js/characters.js',
+  './js/world.js',
   './js/generate.js', './js/layout.js', './js/bake.js', './js/export.js', './js/merge.js', './js/import.js',
   './manifest.json', './assets/icon-192.png', './assets/icon-512.png', './assets/favicon-32.png',
   './assets/fonts/comic-tc.woff2',   // 排版預覽要跟匯出同字型,離線也得有
