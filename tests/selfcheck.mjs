@@ -204,3 +204,10 @@ console.log('manual font size ok(併入 publish-grade 測試)');
 // ── 分鏡要求微表情 ──
 assert.ok(buildStoryboardPrompt('x', []).includes('表情:'), '分鏡指令要求微表情欄');
 console.log('expression rule ok');
+
+// ── 角色頁 bio 優先 ──
+const bioFiles = buildReaderFiles({ title: 'T', chapters: [{ title: 'C', panels: [{ image: 'imgs/a.png', bubbles: [] }] }],
+  characters: [{ id: 'x', name: 'X', card: 'EN PROMPT', bio: '中文介紹' }] });
+const cp = bioFiles.find(f => f.path === 'char/x.html').content;
+assert.ok(cp.includes('中文介紹') && !cp.includes('EN PROMPT'), '角色頁 bio 優先於生圖卡');
+console.log('char bio ok');

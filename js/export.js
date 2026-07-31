@@ -140,13 +140,14 @@ ${panels}
 }
 
 function charHtml({ title, c, site }) {
-  return head({ pageTitle: `${c.name}|${title}`, desc: (c.card || '').slice(0, 80), path: `char/${c.id}.html`, site })
+  const intro = c.bio || c.card || '';
+  return head({ pageTitle: `${c.name}|${title}`, desc: intro.slice(0, 80), path: `char/${c.id}.html`, site })
     + `
 <main class="char-page">
 <nav class="reader-top"><a href="../index.html">目錄</a><b>${esc(c.name)}</b><span></span></nav>
 ${c.image ? `<img class="portrait" src="../${esc(c.image)}" alt="${esc(c.name)}">` : ''}
 <h1>${esc(c.name)}</h1>
-${c.card ? `<p class="card-text">${esc(c.card)}</p>` : ''}
+${intro ? `<p class="card-text">${esc(intro)}</p>` : ''}
 </main>` + footer(site, `char/${c.id}.html`);
 }
 
