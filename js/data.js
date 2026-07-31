@@ -55,6 +55,15 @@ export async function listCharacters() {
 // 世界風土庫:場景、道具、風土素材。跟角色庫同形狀(world/<id>/card.json + ref.png),
 // 差別是它不是人——分鏡用 panel.world 指名,生圖時當「這一格的場景/道具鎖」附上去。
 // 沒有它的話同一個公會大廳每格都會重抽一個樣子。
+// 畫風錨:一張已完成、風格對的圖。參考圖掛零的格(空鏡、微距、地面、燒掉的林子)
+// 沒有任何東西壓著畫風,一路往寫實照片跑——淺景深散景、真實質感,跟前後格不像同一部作品。
+// 專案可放 style-anchor.png 在根目錄指定;沒有就不附(不亂猜一張角色圖,免得把角色帶進空鏡)。
+export async function styleAnchorDataURL() {
+  try {
+    return 'data:image/png;base64,' + await store.readBlobB64('style-anchor.png');
+  } catch { return null; }
+}
+
 export async function listWorld() {
   const entries = await store.listDir('world');
   const out = [];
