@@ -37,6 +37,20 @@ export const THEMES = {
     surface: '#1b1e2b', accentSoft: '#f2a3b3' },
 };
 
+// 尾巴 'auto'(也是沒設定時的預設):指向格子中心。氣泡多半擺在角落、說話的人在畫面中央,
+// 「往中心指」在絕大多數格子是對的;要更準就手動挑八向之一,或用 'none' 關掉。
+// 泡本身就在中心時沒有方向可言,退回朝下。
+const TAIL_BY_SECTOR = ['right', 'bottom-right', 'bottom', 'bottom-left', 'left', 'top-left', 'top', 'top-right'];
+export function autoTail(x = 50, y = 50) {
+  const dx = 50 - x, dy = 50 - y;              // 指向中心的向量(y 向下為正)
+  if (Math.abs(dx) < 12 && Math.abs(dy) < 12) return 'bottom';
+  const sector = Math.round(Math.atan2(dy, dx) * 4 / Math.PI);   // 每 45 度一格
+  return TAIL_BY_SECTOR[(sector + 8) % 8];
+}
+export function resolveTail(b) {
+  return !b.tail || b.tail === 'auto' ? autoTail(b.x, b.y) : b.tail;
+}
+
 export function buildReaderFiles({ title, chapters, characters = [], site = {}, cover = null, assetsVersion = null, fontPath = 'fonts/comic-tc.woff2', ogPath = null }) {
   const KEY = 'comic-' + (site.storageKey || title);
   // 疊三層:暖紙打底(範本沒給的欄位有值可用)→ 選定範本 → site.colors 逐項覆蓋。名字打錯就退回暖紙。
@@ -183,7 +197,7 @@ function readHtml({ title, chapters, i, site }) {
     const bubbles = (p.bubbles || []).map(b => {
       const spk = b.speaker && (b.type || 'speech') !== 'narration' ? `<span class="spk">${esc(b.speaker)}</span>` : '';
       const fs = b.fs ? `font-size:${b.fs}cqw;` : '';
-      return `<div class="bubble ${esc(b.type || 'speech')} t-${esc(b.tail || 'bottom')}" style="left:${b.x}%;top:${b.y}%;${b.w ? `max-width:${b.w}%;` : ''}${fs}">${spk}${esc(b.text)}</div>`;
+      return `<div class="bubble ${esc(b.type || 'speech')} t-${esc(resolveTail(b))}" style="left:${b.x}%;top:${b.y}%;${b.w ? `max-width:${b.w}%;` : ''}${fs}">${spk}${esc(b.text)}</div>`;
     }).join('');
     return `<div class="panel" data-p="${pi}"><img src="../${esc(p.image)}" alt="" loading="lazy">${fx}${bubbles}</div>`;
   }).join('\n');

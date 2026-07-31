@@ -7,8 +7,51 @@ import * as data from './data.js';
 import { getProvider, generateImages } from './providers.js';
 import { buildEffectPrompt } from './prompt.js';
 import { app, requireProject } from './app.js';
+import { resolveTail } from './export.js';
+import { lintLayout, summarize } from './lint-layout.js';
 
 let panelStates = new Map(); // panelId -> {chosen, bubbles, effects}
+
+// ── 復原 ──
+// 刪氣泡是直接改陣列再存檔,誤刪就回不來。動手前先拍一張快照,Ctrl+Z 倒回去。
+// 只記字層與效果層的擺位(圖檔本身不動),所以一筆很小,存 30 步綽綽有餘。
+const undoStack = [];
+const UNDO_MAX = 30;
+
+function snap(label, pids) {
+  const items = [];
+  for (const pid of pids) {
+    const st = panelStates.get(pid);
+    if (st) items.push({ pid, bubbles: structuredClone(st.bubbles || []), effects: structuredClone(st.effects || []) });
+  }
+  if (!items.length) return;
+  undoStack.push({ label, items });
+  if (undoStack.length > UNDO_MAX) undoStack.shift();
+}
+
+async function undo() {
+  const entry = undoStack.pop();
+  if (!entry) { toast('沒有可以復原的動作'); return; }
+  for (const it of entry.items) {
+    const st = panelStates.get(it.pid);
+    if (!st) continue;
+    st.bubbles = it.bubbles;
+    st.effects = it.effects;
+    await data.savePanelState(app.chapter, it.pid, st);   // 復原也要落檔,否則重整又回到壞掉的版本
+    const wrap = document.querySelector(`.ly-panel[data-pid="${it.pid}"]`);
+    if (wrap) await redrawOverlays(wrap, st);
+  }
+  toast(`已復原:${entry.label}`);
+}
+
+// Ctrl/Cmd+Z——只在排版分頁生效,免得在別的分頁打字時被攔截
+window.addEventListener('keydown', ev => {
+  if (!(ev.ctrlKey || ev.metaKey) || ev.key.toLowerCase() !== 'z') return;
+  if (!document.getElementById('tab-layout')?.classList.contains('active')) return;
+  if (/^(INPUT|TEXTAREA|SELECT)$/.test(ev.target.tagName)) return;
+  ev.preventDefault();
+  undo();
+});
 
 export async function refreshLayout() {
   const box = $('#ly-panels');
@@ -42,6 +85,7 @@ async function renderPanel(p, st, url) {
   wrap.append(img);
   img.onclick = e => {
     const r = wrap.getBoundingClientRect();
+    snap('新增氣泡', [p.id]);
     st.bubbles.push({
       x: Math.round((e.clientX - r.left) / r.width * 100),
       y: Math.round((e.clientY - r.top) / r.height * 100),
@@ -161,10 +205,16 @@ async function redrawOverlays(wrap, st) {
     wrap.append(el);
   }
   st.bubbles.forEach((b, i) => {
-    const el = h('div', { class: 'bubble ' + b.type + ' t-' + (b.tail || 'bottom') },
+    const el = h('div', { class: 'bubble ' + b.type + ' t-' + resolveTail(b) },
       b.speaker && b.type !== 'narration' ? h('span', { class: 'spk' }, b.speaker) : null,
       b.text,
-      h('button', { class: 'del', onclick: ev => { ev.stopPropagation(); st.bubbles.splice(i, 1); redrawOverlays(wrap, st); } }, '×'),
+      h('button', { class: 'del', onclick: ev => {
+        ev.stopPropagation();
+        snap('刪除氣泡', [wrap.dataset.pid]);
+        st.bubbles.splice(i, 1);
+        redrawOverlays(wrap, st);
+        autosaveWrap(wrap, st);
+      } }, '×'),
     );
     el.style.left = b.x + '%';
     el.style.top = b.y + '%';
@@ -172,7 +222,14 @@ async function redrawOverlays(wrap, st) {
     if (b.fs) el.style.fontSize = b.fs + 'cqw';
     el.ondblclick = async ev => {
       ev.stopPropagation();
-      if (await editBubble(b)) redrawOverlays(wrap, st);
+      const before = structuredClone(b);
+      if (await editBubble(b)) {
+        undoStack.push({ label: '編輯氣泡', items: [{ pid: wrap.dataset.pid,
+          bubbles: st.bubbles.map(x => x === b ? before : structuredClone(x)),
+          effects: structuredClone(st.effects || []) }] });
+        redrawOverlays(wrap, st);
+        autosaveWrap(wrap, st);
+      }
     };
     el.onclick = ev => ev.stopPropagation();
     dragXY(el, wrap, b, () => { el.style.left = b.x + '%'; el.style.top = b.y + '%'; });
@@ -194,12 +251,18 @@ function dragXY(el, wrap, obj, onMove) {
     if (ev.target.closest('.del')) return;
     ev.preventDefault();
     const r = wrap.getBoundingClientRect();
+    let moved = false;
     const move = mv => {
+      if (!moved) { snap('移動', [wrap.dataset.pid]); moved = true; }   // 第一次真的動了才記,免得點一下就塞一筆
       obj.x = Math.min(100, Math.max(0, Math.round((mv.clientX - r.left) / r.width * 100)));
       obj.y = Math.min(100, Math.max(0, Math.round((mv.clientY - r.top) / r.height * 100)));
       onMove();
     };
-    const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); };
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      if (moved) { onMove(); autosaveWrap(wrap, panelStates.get(wrap.dataset.pid)); }
+    };
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', up);
   };
@@ -222,8 +285,9 @@ async function editBubble(b) {
         { value: 'sfx', label: '效果字(CSS 版;要畫進圖用效果層)' },
       ] },
       // 每顆泡各自設定:同一格裡三顆泡的說話者位置不同,方向本來就該各選各的
-      { key: 'tail', label: '尾巴指向(這顆泡專屬;只對白泡有效)', type: 'select', value: b.tail || 'bottom', options: [
-        { value: 'bottom', label: '下(預設)' },
+      { key: 'tail', label: '尾巴指向(這顆泡專屬;只對白泡有效)', type: 'select', value: b.tail || 'auto', options: [
+        { value: 'auto', label: '自動(指向格中心;預設)' },
+        { value: 'bottom', label: '下' },
         { value: 'bottom-left', label: '左下' },
         { value: 'bottom-right', label: '右下' },
         { value: 'top', label: '上' },
@@ -257,6 +321,7 @@ $('#ly-fill').onclick = async () => {
   for (const p of sb.panels) {
     const st = panelStates.get(p.id);
     if (!st || st.bubbles.length || !p.dialogue.length) continue;
+    snap('從分鏡帶入對白', [p.id]);
     p.dialogue.forEach((d, i) => {
       st.bubbles.push({
         x: d.type === 'narration' ? 28 : (i % 2 ? 72 : 28),
@@ -269,6 +334,72 @@ $('#ly-fill').onclick = async () => {
   }
   await render();
   toast(`已帶入 ${filled} 格的對白(已存檔)`);
+};
+
+// ── 全章文字取代 ──
+// 改一個角色名或口頭禪,本來要一格一格開氣泡編輯視窗。整章一次換完,而且可以 Ctrl+Z 倒回去。
+$('#ly-replace').onclick = async () => {
+  if (!app.chapter) return;
+  const r = await modal({
+    title: '全章取代文字',
+    fields: [
+      { key: 'from', label: '找什麼', placeholder: '例:陸脩' },
+      { key: 'to', label: '換成什麼(留空=刪掉這段字)' },
+      { key: 'where', label: '換哪裡', type: 'select', value: 'text', options: [
+        { value: 'text', label: '只換氣泡文字' },
+        { value: 'both', label: '氣泡文字＋說話者' },
+        { value: 'speaker', label: '只換說話者' },
+      ] },
+    ],
+    confirmText: '取代',
+  });
+  if (!r || !r.from) return;
+
+  const hitPids = [];
+  for (const [pid, st] of panelStates) {
+    const hit = (st.bubbles || []).some(b =>
+      (r.where !== 'speaker' && String(b.text || '').includes(r.from)) ||
+      (r.where !== 'text' && String(b.speaker || '').includes(r.from)));
+    if (hit) hitPids.push(pid);
+  }
+  if (!hitPids.length) { toast(`整章找不到「${r.from}」`); return; }
+
+  snap(`全章取代「${r.from}」`, hitPids);   // 一次動作一筆,Ctrl+Z 全部一起倒回
+  let n = 0;
+  for (const pid of hitPids) {
+    const st = panelStates.get(pid);
+    for (const b of st.bubbles) {
+      if (r.where !== 'speaker' && String(b.text || '').includes(r.from)) {
+        b.text = b.text.split(r.from).join(r.to || ''); n += 1;
+      }
+      if (r.where !== 'text' && String(b.speaker || '').includes(r.from)) {
+        b.speaker = b.speaker.split(r.from).join(r.to || ''); n += 1;
+      }
+    }
+    await data.savePanelState(app.chapter, pid, st);
+  }
+  await render();
+  toast(`${hitPids.length} 格、共 ${n} 處已取代(Ctrl+Z 可復原)`);
+};
+
+// ── 完稿檢查 ──
+$('#ly-lint').onclick = async () => {
+  if (!app.chapter) return;
+  const sb = await data.loadStoryboard(app.chapter);
+  const panels = sb.panels.map(p => ({
+    id: p.id, order: p.order, dialogue: p.dialogue || [],
+    state: panelStates.get(p.id) || {},
+  }));
+  const issues = lintLayout(panels);
+  if (!issues.length) { setStatus('#ly-status', `完稿檢查:${summarize(issues)}(${panels.length} 格)`); return; }
+  await modal({
+    title: `完稿檢查——${summarize(issues)}`,
+    body: h('div', { class: 'lint-list' }, ...issues.map(i =>
+      h('p', { class: i.level === 'error' ? 'lint-err' : 'lint-warn' },
+        h('b', {}, `第 ${i.order} 格`), ' ' + i.msg))),
+    confirmText: '知道了',
+  });
+  setStatus('#ly-status', `完稿檢查:${summarize(issues)}`, issues.some(i => i.level === 'error'));
 };
 
 $('#ly-save').onclick = async () => {

@@ -395,3 +395,75 @@ console.log('studio/export parity ok');
   }
   console.log('og image ok');
 }
+
+// ── 尾巴 auto:指向格中心 ──
+{
+  const { autoTail, resolveTail } = await import('../js/export.js');
+  const want = { '20,20': 'bottom-right', '80,20': 'bottom-left', '20,80': 'top-right', '80,80': 'top-left',
+                 '50,15': 'bottom', '50,85': 'top', '15,50': 'right', '85,50': 'left' };
+  for (const [xy, dir] of Object.entries(want)) {
+    const [x, y] = xy.split(',').map(Number);
+    assert.equal(autoTail(x, y), dir, `(${xy}) 的尾巴要指向格中心`);
+  }
+  assert.equal(autoTail(50, 50), 'bottom', '泡在正中心沒有方向可言,退回朝下');
+  assert.equal(resolveTail({ x: 20, y: 20 }), 'bottom-right', '沒設定=auto');
+  assert.equal(resolveTail({ x: 20, y: 20, tail: 'auto' }), 'bottom-right', 'auto 要算');
+  assert.equal(resolveTail({ x: 20, y: 20, tail: 'left' }), 'left', '手動挑的方向不可被蓋掉');
+  assert.equal(resolveTail({ x: 20, y: 20, tail: 'none' }), 'none', 'none 要留著');
+  // 匯出的 HTML 要吃到算完的方向,不能吐 t-auto(CSS 沒有這條規則,尾巴會不見)
+  const f = buildReaderFiles({ title: 'T', chapters: [{ title: 'C', panels: [{ image: 'i.png', bubbles: [
+    { type: 'speech', text: '左上角', x: 20, y: 20 },
+    { type: 'speech', text: '指定', x: 20, y: 20, tail: 'top' },
+  ] }] }] }).find(x => x.path === 'read/1.html').content;
+  assert.ok(f.includes('t-bottom-right') && f.includes('t-top'), '匯出要寫入算完的方向');
+  assert.ok(!f.includes('t-auto'), '不可把 auto 原封不動吐進 HTML——CSS 沒有這條規則,尾巴會整個不見');
+  console.log('auto tail ok');
+}
+
+// ── 排版完稿檢查 ──
+{
+  const { lintLayout, summarize } = await import('../js/lint-layout.js');
+  const panels = [
+    { id: 'a', order: 1, dialogue: [{ text: '嗨' }], state: { chosen: 'c.png', bubbles: [{ x: 30, y: 30, text: '嗨' }] } },
+    // 沒選圖,但同時有台詞與一顆壞氣泡——沒有 continue 的話會連噴四條,洗掉真正的問題
+    { id: 'b', order: 2, dialogue: [{ text: 'x' }, { text: 'y' }], state: { bubbles: [{ x: 1, y: 1, text: '' }] } },
+    { id: 'c', order: 3, dialogue: [{ text: 'x' }, { text: 'y' }], state: { chosen: 'c.png', bubbles: [] } },
+    { id: 'd', order: 4, dialogue: [{ text: 'x' }, { text: 'y' }], state: { chosen: 'c.png', bubbles: [{ x: 50, y: 50, text: 'x' }] } },
+    { id: 'e', order: 5, dialogue: [], state: { chosen: 'c.png', bubbles: [
+      { x: 1, y: 50, text: '出界' }, { x: 50, y: 50, text: '' },
+      { x: 50, y: 50, text: '雙擊編輯文字' }, { x: 50, y: 50, text: '小', fs: 1.2 }, { x: 50, y: 50, text: '寬', w: 88 },
+    ] } },
+  ];
+  const got = lintLayout(panels);
+  const at = n => got.filter(i => i.order === n);
+  assert.equal(at(1).length, 0, '好的格不該有意見');
+  assert.ok(at(2).some(i => i.level === 'error' && /選定格圖/.test(i.msg)), '沒選圖=錯誤');
+  assert.equal(at(2).length, 1, '沒圖就別再挑氣泡的毛病,免得洗版');
+  assert.ok(at(3).some(i => i.level === 'error' && /一顆氣泡都沒有/.test(i.msg)), '有台詞沒氣泡=錯誤');
+  assert.ok(at(4).some(i => i.level === 'warn' && /只有 1 顆/.test(i.msg)), '氣泡比台詞少=提醒');
+  const e5 = at(5).map(i => i.msg).join('|');
+  assert.ok(/拖到畫面外/.test(e5) && /是空的/.test(e5) && /還是預設字/.test(e5)
+    && /太小/.test(e5) && /蓋掉大半格/.test(e5), '五種氣泡問題都要抓到:' + e5);
+  assert.deepEqual(got.map(i => i.order), [...got.map(i => i.order)].sort((a, b) => a - b), '結果要依格號排序');
+  assert.equal(summarize([]), '沒有問題');
+  console.log('layout lint ok');
+}
+
+// ── 排版 UI:復原、取代、檢查都要真的接上 ──
+{
+  const fs = await import('node:fs');
+  const ly = fs.readFileSync('js/layout.js', 'utf8');
+  for (const [what, re] of [
+    ['復原堆疊', /const undoStack = \[\]/],
+    ['Ctrl\\+Z', /key\.toLowerCase\(\) !== 'z'/],
+    ['刪氣泡前拍快照', /snap\('刪除氣泡'/],
+    ['移動前拍快照', /snap\('移動'/],
+    ['取代整章', /ly-replace/],
+    ['完稿檢查', /ly-lint/],
+  ]) assert.ok(re.test(ly), '排版站少了:' + what);
+  const undoBody = ly.slice(ly.indexOf('async function undo'), ly.indexOf('// Ctrl/Cmd+Z'));
+  assert.ok(/savePanelState/.test(undoBody), '復原後要落檔,否則重整又回到壞掉的版本');
+  const html = fs.readFileSync('studio.html', 'utf8');
+  for (const id of ['ly-replace', 'ly-lint']) assert.ok(html.includes(`id="${id}"`), '工具列少了按鈕:' + id);
+  console.log('layout tools ok');
+}
