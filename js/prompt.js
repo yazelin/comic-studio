@@ -17,9 +17,12 @@ export function buildStoryboardPrompt(chapterText, characters = []) {
     '規則:',
     '- 只輸出一個 JSON 物件,不要任何其他文字。',
     '- sfx=效果字(擬聲/音效):只在原文明確有聲音事件時使用,text 限 1~4 字(如「轟」「叩叩」),整章最多兩三處,安靜的章節可以完全沒有。\n'
-    + '- 格式: {"panels":[{"scene":"畫面場景與內容描述(給生圖模型,具體寫出環境、光線、動作)","characters":["出場角色 id"],"shot":"鏡頭(遠景/中景/特寫/俯視/仰視等)","dialogue":[{"speaker":"說話者名字或「旁白」","text":"台詞或旁白","type":"speech|thought|narration|sfx"}],"notes":"備註,可空字串"}]}',
+    + '- 格式: {"panels":[{"scene":"畫面場景與內容描述(給生圖模型,具體寫出環境、光線、動作)","characters":["出場角色 id"],"world":["場景/道具 id"],"shot":"鏡頭(遠景/中景/特寫/俯視/仰視等)","continues":"承接哪一格的姿勢(前一格的 id,沒有就空字串)","dialogue":[{"speaker":"說話者名字或「旁白」","text":"台詞或旁白","type":"speech|thought|narration|sfx"}],"notes":"備註,可空字串"}]}',
     '- 每格一個畫面,節奏照漫畫敘事:重要時刻給特寫、轉場給遠景。',
     '- **有角色入鏡的格,scene 必須含「表情:」描述該格當下的微表情**——從劇情情緒推(驚、懼、沉思、專注、釋然、放空⋯),寫具體的臉部狀態(眼睛/眉/嘴),不要只寫「平靜」。表情是生圖成敗的關鍵欄位。',
+    '- **同一格也必須含「動作:」描述身體在做什麼**——重心在哪隻腳、手在做什麼、視線去哪、跟環境的接觸點(靠著牆/手撐桌/腳踩在線後)。從這一格的劇情推,不要每格都寫「站著」。**動作缺席的下場跟表情缺席一樣:每一格都是同一個罰站的人。**',
+    '- **動作要連戲**:上一格結束的姿勢就是這一格的起點。同一場景的連續格之間,身體要有可信的位移或變化(至少重心、手、視線其中一項不同);真的要重複的格(刻意的定鏡)才寫成一模一樣。',
+    '- 承接前一格姿勢的格,把前一格的 id 填進 `continues`——生圖時會把前一格的成品當參考圖,人物位置與光線才會連得起來。',
     '- 台詞從原文取材,可精簡,不可改變劇情。',
     '- 12 到 30 格之間,依內容長度決定。',
     '',
@@ -56,6 +59,7 @@ export function parseStoryboard(text) {
     scene: String(p.scene || ''),
     characters: Array.isArray(p.characters) ? p.characters.map(String) : [],
     world: Array.isArray(p.world) ? p.world.map(String) : [],
+    continues: String(p.continues || ''),
     shot: String(p.shot || ''),
     dialogue: Array.isArray(p.dialogue)
       ? p.dialogue.map(d => ({
@@ -125,8 +129,23 @@ export function buildPoseSheetPrompt({ style, name, card, poses = [] }) {
   ].join('\n');
 }
 
-// 單格生圖 prompt = 全域畫風 + 鏡頭 + 場景 + 出場角色設定卡 + 禁畫字
-export function buildPanelPrompt({ style, panel, characterCards = [], worldCards = [] }) {
+// 鏡頭只寫「中景」兩個字沒有用:角色立繪是全身白底站姿,模型會連取景一起抄走,
+// 於是每一格都變成全身立繪。把鏡頭翻成具體的裁切指令才擋得住。
+const SHOT_CROP = {
+  極特寫: '極特寫:主體的局部(眼睛/手/物件)佔滿畫面',
+  特寫: '特寫:臉部或主體佔畫面主要面積,不畫全身',
+  近景: '近景:肩膀以上,不畫全身',
+  中景: '中景:腰部以上,**不要畫成全身立繪**',
+  遠景: '遠景:人物在環境裡很小,環境是主體',
+  空鏡: '空鏡:畫面裡沒有人',
+};
+function shotLine(shot) {
+  const key = Object.keys(SHOT_CROP).find(k => (shot || '').includes(k));
+  return key ? SHOT_CROP[key] : (shot || '中景');
+}
+
+// 單格生圖 prompt = 全域畫風 + 鏡頭 + 場景 + 出場角色設定卡 + 全域紅線 + 禁畫字
+export function buildPanelPrompt({ style, panel, characterCards = [], worldCards = [], rules = [] }) {
   const cast = characterCards
     .filter(c => panel.characters.includes(c.id) || panel.characters.includes(c.name))
     .map(c => `- ${c.name}: ${c.card}${c.must_not ? `\n  絕對不可出現: ${c.must_not}` : ''}`);
@@ -135,11 +154,14 @@ export function buildPanelPrompt({ style, panel, characterCards = [], worldCards
     .map(w => `- ${w.name}: ${w.card}${w.must_not ? `\n  絕對不可出現: ${w.must_not}` : ''}`);
   return [
     `畫風: ${style}`,
-    `鏡頭: ${panel.shot || '中景'}`,
+    `鏡頭: ${shotLine(panel.shot)}`,
     `畫面: ${panel.scene}`,
     world.length ? '場景與道具(必須完全符合設定):\n' + world.join('\n') : '',
     cast.length ? '出場角色(外觀必須完全符合設定):\n' + cast.join('\n') : '',
     panel.notes ? `備註: ${panel.notes}` : '',
+    (cast.length ? '參考圖裡的角色設定圖只提供**長相與服裝**。姿勢、取景、視線一律照上面「畫面」寫的做,'
+      + '不要沿用設定圖的正面站姿;附了動作集就從裡面挑一個貼近本格描述的體態。' : ''),
+    rules.length ? '全域紅線(整部作品一致,不可違反):\n' + rules.map(r => `- ${r}`).join('\n') : '',
     '重要:圖中不要出現任何文字、對白框、狀聲字或浮水印;對白之後會用排版疊加。',
   ].filter(Boolean).join('\n');
 }

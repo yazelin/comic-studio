@@ -27,6 +27,12 @@ export function lintStoryboard(sb, { chapter = '', cast = [], world = [] } = {})
     if ((p.characters || []).length && !/表情/.test(p.scene || '')) {
       bad.push(`${at(p)}:有角色卻沒寫「表情:」——生圖會出呆臉`);
     }
+    if ((p.characters || []).length && !/動作/.test(p.scene || '')) {
+      bad.push(`${at(p)}:有角色卻沒寫「動作:」——生圖會出呆站(每格同一個罰站的人)`);
+    }
+    if (p.continues && !seen.has(p.continues)) {
+      bad.push(`${at(p)}:continues 指向「${p.continues}」,但它不在這一格前面——連戲鏈只能往回指`);
+    }
     for (const d of p.dialogue || []) {
       if (!TYPES.includes(d.type)) bad.push(`${at(p)}:type「${d.type}」不是 ${TYPES.join('|')}`);
       const spk = d.speaker || '';
@@ -43,7 +49,7 @@ export function lintStoryboard(sb, { chapter = '', cast = [], world = [] } = {})
 function selfTest() {
   const cast = ['陸修'];
   const good = { panels: [
-    { id: 'p1', scene: '中景。表情:眼睛微張,嘴抿著。', characters: ['陸修'], dialogue: [{ speaker: '陸修', text: '這條路是走出來的。', type: 'speech' }] },
+    { id: 'p1', scene: '中景。表情:眼睛微張,嘴抿著。動作:重心在左腳,右手垂著,視線往前。', characters: ['陸修'], dialogue: [{ speaker: '陸修', text: '這條路是走出來的。', type: 'speech' }] },
     { id: 'p2', scene: '空景。一條車轍路。', characters: [], dialogue: [{ speaker: '', text: '路的意思是有人。', type: 'narration' }] },
   ] };
   const badWorld = lintStoryboard({ panels: [{ id: 'p1', scene: '空景。', characters: [], world: ['no_such_place'], dialogue: [] }] }, { world: ['node_guild_hall'] });
@@ -54,8 +60,9 @@ function selfTest() {
   const clean = lintStoryboard(good, { cast });
   const dirty = lintStoryboard(bad, { cast });
   const has = re => dirty.some(m => re.test(m));
-  const ok = clean.length === 0
-    && has(/表情/) && has(/半形/) && has(/type/) && has(/不在角色表/) && has(/重複/) && has(/scene 空白/)
+  const badChain = lintStoryboard({ panels: [{ id: 'p1', scene: '空景。', characters: [], continues: 'p9', dialogue: [] }] });
+  const ok = clean.length === 0 && badChain.some(m => /連戲鏈/.test(m))
+    && has(/動作/) && has(/表情/) && has(/半形/) && has(/type/) && has(/不在角色表/) && has(/重複/) && has(/scene 空白/)
     && badWorld.some(m => /world/.test(m));
   console.log(clean.length === 0 ? '負控制通過:乾淨的分鏡 0 問題' : `負控制失敗:${clean.join(' / ')}`);
   console.log(`召回:壞分鏡抓到 ${dirty.length} 條 —— ${dirty.join(' / ')}`);
