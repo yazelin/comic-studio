@@ -6,6 +6,17 @@
 <title>comic-studio 工作台</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='18' fill='%23101013'/><text x='50' y='68' font-size='52' text-anchor='middle' fill='%23eceae4'>漫</text></svg>">
 <link rel="stylesheet" href="css/studio.css">
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" href="./assets/favicon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="./assets/icon-180.png">
+<meta name="theme-color" content="#16161a">
+<meta name="mobile-web-app-capable" content="content">
+<link rel="canonical" href="https://yazelin.github.io/comic-studio/studio.html">
+<meta property="og:type" content="website">
+<meta property="og:title" content="comic-studio 工作台">
+<meta property="og:description" content="AI 分鏡、角色一致生圖、氣泡排版,匯出可離線閱讀的 PWA 漫畫站。">
+<meta property="og:url" content="https://yazelin.github.io/comic-studio/studio.html">
+<meta property="og:image" content="https://yazelin.github.io/comic-studio/og.jpg">
 </head>
 <body>
 <header id="topbar">
@@ -121,5 +132,6 @@
 
 <div id="toast" hidden></div>
 <script type="module" src="js/app.js"></script>
+<script>if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));</script>
 </body>
 </html>

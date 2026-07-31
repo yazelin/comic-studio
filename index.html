@@ -50,6 +50,11 @@ footer.title-footer { padding: 2.5rem 0 3rem; text-align: center; color: var(--d
 .footer-icons a:hover { color: var(--fg); }
 .footer-icons svg { width: 26px; height: 26px; fill: currentColor; }
 </style>
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" href="./assets/favicon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="./assets/icon-180.png">
+<meta name="theme-color" content="#16161a">
+<meta name="mobile-web-app-capable" content="content">
 </head>
 <body>
 <header class="hero"><div class="wrap">
@@ -172,5 +177,6 @@ if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",
 })();
 </script>
 
+<script>if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));</script>
 </body>
 </html>

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="112" fill="#16161a"/>
+  <!-- 兩格漫畫框:上格有一顆對白泡,下格是留白的格 -->
+  <rect x="104" y="96" width="304" height="150" rx="14" fill="none" stroke="#e8e3d7" stroke-width="16"/>
+  <rect x="104" y="270" width="304" height="150" rx="14" fill="none" stroke="#e8e3d7" stroke-width="16"/>
+  <path d="M160 140h150a20 20 0 0 1 20 20v34a20 20 0 0 1-20 20h-88l-30 26 6-26h-38a20 20 0 0 1-20-20v-34a20 20 0 0 1 20-20z" fill="#e8e3d7"/>
+  <circle cx="330" cy="352" r="34" fill="#c9a856"/>
+</svg>

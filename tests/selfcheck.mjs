@@ -241,3 +241,28 @@ const withNot = buildPanelPrompt({ style: 's', panel: { scene: 'x', shot: '中�
   characterCards: [{ id: 'a', name: 'A', card: 'card', must_not: '帽子' }] });
 assert.ok(withNot.includes('絕對不可出現: 帽子'), 'must_not 要進格 prompt');
 console.log('character sheets ok');
+
+// ── 工作台自己的 PWA 完整度(對齊家族其他站) ──
+{
+  const fs = await import('node:fs');
+  const mf = JSON.parse(fs.readFileSync('manifest.json', 'utf8'));
+  assert.ok(mf.name && mf.start_url && mf.display === 'standalone', 'manifest 必要欄位');
+  assert.ok(mf.icons.some(i => i.sizes === '512x512' && i.purpose === 'maskable'), '要有 maskable 512 圖示');
+  for (const i of mf.icons) assert.ok(fs.existsSync(i.src.replace('./', '')), '圖示檔要存在:' + i.src);
+  const sw = fs.readFileSync('sw.js', 'utf8');
+  assert.ok(sw.includes("req.method !== 'GET'") && sw.includes('url.origin !== location.origin'),
+    'SW 不准碰生圖 API(POST 與跨網域一律放行)');
+  const shell = [...sw.match(/const SHELL_FILES = \[([^\]]*)\]/s)[1].matchAll(/'([^']+)'/g)].map(m => m[1]);
+  for (const f of shell) {
+    if (f === './') continue;
+    assert.ok(fs.existsSync(f.replace('./', '')), 'SHELL 清單裡的檔要存在:' + f);
+  }
+  for (const js of fs.readdirSync('js')) {
+    assert.ok(shell.includes('./js/' + js), 'js 少進 SHELL 快取:' + js);
+  }
+  for (const page of ['index.html', 'studio.html']) {
+    const h = fs.readFileSync(page, 'utf8');
+    assert.ok(h.includes('rel="manifest"') && h.includes('serviceWorker'), page + ' 要接 manifest 與 SW');
+  }
+  console.log('studio PWA ok');
+}

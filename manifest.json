@@ -1,0 +1,22 @@
+{
+ "name": "comic-studio — AI 漫畫製作工作台",
+ "short_name": "comic-studio",
+ "description": "把小說做成漫畫的純前端工作台:AI 分鏡、角色一致生圖、氣泡排版,匯出可離線閱讀的 PWA 漫畫站。",
+ "start_url": "./studio.html",
+ "scope": "./",
+ "display": "standalone",
+ "orientation": "any",
+ "background_color": "#16161a",
+ "theme_color": "#16161a",
+ "lang": "zh-Hant",
+ "categories": ["productivity", "graphics"],
+ "icons": [
+  { "src": "./assets/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+  { "src": "./assets/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+  { "src": "./assets/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+ ],
+ "shortcuts": [
+  { "name": "開啟工作台", "url": "./studio.html" },
+  { "name": "說明首頁", "url": "./index.html" }
+ ]
+}
