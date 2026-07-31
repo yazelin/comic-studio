@@ -29,7 +29,13 @@ async function generatePanel(p, chars, { count, size, onStatus }) {
   const provider = getProvider(app.meta?.providers.image);
   if (!provider) throw new Error('未設定生圖模型(到「專案」選擇)');
   const worlds = await data.listWorld();
-  const promptText = buildPanelPrompt({ style: app.meta.style, panel: p, characterCards: chars, worldCards: worlds, rules: app.meta.rules || [] });
+  const promptText = [
+    buildPanelPrompt({ style: app.meta.style, panel: p, characterCards: chars, worldCards: worlds, rules: app.meta.rules || [] }),
+    (!p.continues && !(p.world || []).length && !p.characters.length)
+      ? '這一格沒有人也沒有指定場景。**不要畫成照片**:不要攝影般的淺景深散景、不要真實照片質感,'
+        + '維持跟其他格一樣的繪畫感動畫背景。附上的參考圖只提供畫風,不要複製它的內容。'
+      : '',
+  ].filter(Boolean).join('\n');
   // 參考圖:立繪必附;該格寫了表情就附表情集,是動作鏡頭就附動作集。
   // 上限 4 張——再多張特徵會互相污染(cast-lock 實測)。
   const scene = `${p.scene || ''} ${p.shot || ''}`;
@@ -52,6 +58,12 @@ async function generatePanel(p, chars, { count, size, onStatus }) {
         refDataURLs.push(await new Promise(ok => { const r = new FileReader(); r.onload = () => ok(r.result); r.readAsDataURL(blob); }));
       }
     }
+  }
+  // 承前格不存在、也沒有任何場景/角色可附時,畫風就沒有錨——補一張(見 data.styleAnchorDataURL)
+  const needAnchor = !p.continues && !(p.world || []).length && !p.characters.length;
+  if (needAnchor) {
+    const a = await data.styleAnchorDataURL();
+    if (a) refDataURLs.push(a);
   }
   for (const id of (p.world || [])) {
     if (refDataURLs.length >= MAX_REFS) break;
