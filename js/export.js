@@ -10,24 +10,31 @@
 
 // 出版範本:一組名字帶一整套色票(站台底色+氣泡)。site.theme 選範本,site.colors 再逐項覆蓋。
 // accent 在整個匯出站只用在一個地方:閱讀進度條。挑範本的 accent 時記得它代表「讀掉多少」。
+// surface=比底色高一階的面(續讀鈕、章節列表與角色卡的 hover);accentSoft=副 accent(連結 hover)。
+// 這兩個是深色範本的關鍵:只有 bg/line 的話,深色站的卡片跟底色黏成一片、滑過去也沒反應。
+// 土金的 accentSoft 刻意用土褐不用金:金是保留色,只准出現在進度條那一處。
 // 內心的白光暈與效果字的白描邊不進範本:它們是壓在畫格上的,要跟畫分離而不是跟站台底色搭。
 // ponytail: 四個範本的 bubbleBg 都是白,所以工作台預覽沒接範本;哪天有範本要換泡色,
 // 得把 --bub 那組變數接到 studio 的排版區,否則預覽會跟成品不同色。
 export const THEMES = {
   // 暖紙:預設。米白紙感+墨字+低調金,通吃大部分作品
   paper: { bg: '#f4f1ea', ink: '#2a2622', dim: '#7a7266', line: 'rgba(0,0,0,.08)', accent: '#b98d2f', panelGap: '#e9e4d8',
-    bubbleBg: '#fff', bubbleInk: '#111', narrationBg: 'rgba(16,16,20,.72)', narrationInk: '#f2f0ea' },
+    bubbleBg: '#fff', bubbleInk: '#111', narrationBg: 'rgba(16,16,20,.72)', narrationInk: '#f2f0ea' ,
+    surface: '#ffffff', accentSoft: '#8a6a3c' },
   // 土金:給《token 無限》。全書低飽和土色調,金(#F6C945)是保留色=「被花掉的他」。
   // 站台唯一的金給進度條——讀掉多少=被花掉多少,剛好是這本書的主題,金不會散在別處亂叫。
   // 旁白條跟著換成深土褐,深黑條在土色書裡會跳出來。
   'token-unlimited': { bg: '#e8e0d2', ink: '#2b2620', dim: '#7d7263', line: 'rgba(0,0,0,.10)', accent: '#F6C945', panelGap: '#d9cfbd',
-    bubbleBg: '#fff', bubbleInk: '#1c1813', narrationBg: 'rgba(43,38,32,.76)', narrationInk: '#efe8db' },
+    bubbleBg: '#fff', bubbleInk: '#1c1813', narrationBg: 'rgba(43,38,32,.76)', narrationInk: '#efe8db' ,
+    surface: '#efe9de', accentSoft: '#8a6a3c' },
   // 製版桌:comic-studio 站同款。墨黑底+暖紙白字+朱紅
   workbench: { bg: '#101013', ink: '#eceae4', dim: '#97959c', line: '#2b2b31', accent: '#d9482b', panelGap: '#17171b',
-    bubbleBg: '#fff', bubbleInk: '#111', narrationBg: 'rgba(240,238,232,.9)', narrationInk: '#17171b' },
-  // 深夜:neko-tensei 那種深藍夜色+金。原站有 panel/粉色副 accent 這裡沒有,只做到近似
+    bubbleBg: '#fff', bubbleInk: '#111', narrationBg: 'rgba(240,238,232,.9)', narrationInk: '#17171b' ,
+    surface: '#17171b', accentSoft: '#e8624a' },
+  // 深夜:neko-tensei 深藍夜色。surface/accentSoft 直接取自原站的 --panel/--pink,不是近似值
   midnight: { bg: '#12141d', ink: '#e8e6df', dim: '#a8a89f', line: 'rgba(232,194,106,.22)', accent: '#e8c26a', panelGap: '#1b1e2b',
-    bubbleBg: '#fff', bubbleInk: '#12141d', narrationBg: 'rgba(18,20,29,.82)', narrationInk: '#e8e6df' },
+    bubbleBg: '#fff', bubbleInk: '#12141d', narrationBg: 'rgba(18,20,29,.82)', narrationInk: '#e8e6df' ,
+    surface: '#1b1e2b', accentSoft: '#f2a3b3' },
 };
 
 export function buildReaderFiles({ title, chapters, characters = [], site = {}, cover = null, assetsVersion = null, fontPath = 'fonts/comic-tc.woff2' }) {
@@ -42,7 +49,7 @@ export function buildReaderFiles({ title, chapters, characters = [], site = {}, 
   }
   if (cover) imagePaths.push(cover);
 
-  files.push({ path: 'style.css', content: `:root{--bg:${C.bg};--ink:${C.ink};--dim:${C.dim};--line:${C.line};--acc:${C.accent};--gap:${C.panelGap};--bub:${C.bubbleBg};--bub-ink:${C.bubbleInk};--narr:${C.narrationBg};--narr-ink:${C.narrationInk}}\n` + SITE_CSS });
+  files.push({ path: 'style.css', content: `:root{--bg:${C.bg};--ink:${C.ink};--dim:${C.dim};--line:${C.line};--acc:${C.accent};--gap:${C.panelGap};--bub:${C.bubbleBg};--bub-ink:${C.bubbleInk};--narr:${C.narrationBg};--narr-ink:${C.narrationInk};--surf:${C.surface};--acc2:${C.accentSoft}}\n` + SITE_CSS });
   files.push({ path: 'app.js', content: appJs(KEY) });
   site = { ...site, _bg: C.bg };
   files.push({ path: 'index.html', content: indexHtml({ title, chapters, characters, site, cover }) });
@@ -298,6 +305,7 @@ const SITE_CSS = `@font-face { font-family: 'Comic TC'; src: url('fonts/comic-tc
 * { margin: 0; box-sizing: border-box; }
 body { background: var(--bg); color: var(--ink); font-family: 'Comic TC', "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif; line-height: 1.7; }
 a { color: var(--ink); }
+a:hover { color: var(--acc2); }
 h1, h2 { font-weight: 700; }
 /* 首頁 */
 .home { max-width: 640px; margin: 0 auto; padding: 4vh 1.2rem 2rem; }
@@ -306,15 +314,17 @@ h1, h2 { font-weight: 700; }
 .hero h1 { font-size: 1.7rem; letter-spacing: .05em; }
 .hook { color: var(--dim); margin: .8rem 0 1.2rem; }
 .newest { color: var(--dim); font-size: .95rem; }
-.resume { display: inline-block; margin-top: .9rem; padding: .55rem 1.1rem; border: 1px solid var(--line); border-radius: 999px; text-decoration: none; font-size: .95rem; }
+.resume { display: inline-block; margin-top: .9rem; padding: .55rem 1.1rem; background: var(--surf); border: 1px solid var(--line); border-radius: 999px; text-decoration: none; font-size: .95rem; }
 .toc-sec h2, .chars h2 { font-size: 1.05rem; color: var(--dim); margin: 1.6rem 0 .6rem; }
 .toc { list-style: none; border-top: 1px solid var(--line); padding: 0; }
 .toc li { border-bottom: 1px solid var(--line); }
+.toc li:hover { background: var(--surf); }
 .toc a { display: flex; gap: 1rem; align-items: baseline; padding: .9rem .2rem; text-decoration: none; }
 .toc .n { color: var(--dim); font-size: .78rem; letter-spacing: .2em; }
 .toc .t { font-size: 1.05rem; }
 .char-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: .9rem; }
-.char-card { text-align: center; text-decoration: none; font-size: .9rem; color: var(--ink); }
+.char-card { text-align: center; text-decoration: none; font-size: .9rem; color: var(--ink); border-radius: 10px; padding: .35rem; }
+.char-card:hover { background: var(--surf); color: var(--acc2); }
 .char-card img { width: 100%; aspect-ratio: 3/4; object-fit: cover; object-position: top; border-radius: 8px; margin-bottom: .35rem; }
 /* 閱讀頁 */
 .reader-top { position: fixed; top: 0; left: 0; right: 0; z-index: 10; display: flex; justify-content: space-between; align-items: center; gap: .8rem; padding: .55rem .9rem; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(6px); border-bottom: 1px solid var(--line); transition: transform .25s; font-size: .92rem; }
