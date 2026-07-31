@@ -34,9 +34,10 @@
   <button data-tab="settings" class="step"><span class="no">2</span><span class="t">模型</span></button>
   <button data-tab="storyboard" class="step"><span class="no">3</span><span class="t">分鏡</span></button>
   <button data-tab="characters" class="step"><span class="no">4</span><span class="t">角色</span></button>
-  <button data-tab="generate" class="step"><span class="no">5</span><span class="t">生圖</span></button>
-  <button data-tab="layout" class="step"><span class="no">6</span><span class="t">排版</span></button>
-  <button data-tab="bake" class="step"><span class="no">7</span><span class="t">匯出</span></button>
+  <button data-tab="world" class="step"><span class="no">5</span><span class="t">世界</span></button>
+  <button data-tab="generate" class="step"><span class="no">6</span><span class="t">生圖</span></button>
+  <button data-tab="layout" class="step"><span class="no">7</span><span class="t">排版</span></button>
+  <button data-tab="bake" class="step"><span class="no">8</span><span class="t">匯出</span></button>
 </nav>
 
 <main>
@@ -87,7 +88,17 @@
   </div>
 </section>
 
-<!-- 5 生圖 -->
+<!-- 5 世界 -->
+<section id="tab-world" class="tab">
+  <header class="tab-head"><h2>世界</h2><p>場景與道具的設定卡+參考圖:公會大廳、街市、貨幣、這個世界的字跡⋯建一次跨話重用。分鏡在每格的「場景/道具」欄填 id,生圖時會當場景鎖附上去——沒有鎖,同一個大廳每格都會重抽一個樣子。</p></header>
+  <div id="world-list" class="cards"></div>
+  <div class="actions">
+    <button id="add-world" class="primary">新增場景／道具</button>
+    <span id="world-status" class="status"></span>
+  </div>
+</section>
+
+<!-- 6 生圖 -->
 <section id="tab-generate" class="tab">
   <header class="tab-head"><h2>生圖</h2><p>逐格生成或整章批量;點候選圖可放大,按「選定」的才會進排版與匯出。</p></header>
   <div id="gen-toolbar" class="toolbar" hidden>
