@@ -154,6 +154,7 @@ const READER_JS = `(async () => {
         el.style.left = b.x + '%';
         el.style.top = b.y + '%';
         if (b.w) el.style.maxWidth = b.w + '%';
+        if (b.fs) el.style.fontSize = b.fs + 'cqw';
         if (b.speaker && (b.type || 'speech') !== 'narration') {
           const s = document.createElement('span');
           s.className = 'spk';

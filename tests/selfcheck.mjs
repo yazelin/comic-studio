@@ -184,3 +184,8 @@ assert.ok(swFx.includes('./imgs/a-fx1.png'), '效果層圖要進 precache(漏了
 const readerJs = filesFx.find(f => f.path === 'reader.js').content;
 assert.ok(readerJs.includes('mixBlendMode'), '閱讀器要渲染效果層');
 console.log('effect layers ok');
+
+// ── 手動字級 ──
+const filesFs = buildReaderFiles({ title: 'T', chapters: [{ title: 'C', panels: [{ image: 'imgs/a.png', bubbles: [{ x: 1, y: 1, text: 'x', type: 'speech', fs: 5 }] }] }] });
+assert.ok(filesFs.find(f => f.path === 'reader.js').content.includes('b.fs'), '閱讀器要套用手動字級');
+console.log('manual font size ok');
