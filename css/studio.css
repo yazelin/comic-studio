@@ -311,3 +311,10 @@ dialog::backdrop { background: rgba(8,8,10,.72); }
 .sheet { text-align: center; font-size: .74rem; color: var(--dim); }
 .sheet img { width: 100%; aspect-ratio: 1/1; object-fit: cover; object-position: top; border-radius: 6px; cursor: zoom-in; }
 .sheet .noimg { aspect-ratio: 1/1; display: grid; place-items: center; border: 1px dashed var(--line); border-radius: 6px; }
+
+/* 完稿檢查結果 */
+.lint-list { max-height: 50vh; overflow-y: auto; margin: .6rem 0; font-size: .92rem; }
+.lint-list p { padding: .3rem 0; border-bottom: 1px solid var(--line); }
+.lint-list b { display: inline-block; min-width: 4.5em; color: var(--dim); font-weight: 600; }
+.lint-err { color: var(--err); }
+.lint-warn { color: #d6b25f; }
