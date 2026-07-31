@@ -52,6 +52,29 @@ export async function listCharacters() {
   return out.sort((a, b) => a.id.localeCompare(b.id));
 }
 
+// 世界風土庫:場景、道具、風土素材。跟角色庫同形狀(world/<id>/card.json + ref.png),
+// 差別是它不是人——分鏡用 panel.world 指名,生圖時當「這一格的場景/道具鎖」附上去。
+// 沒有它的話同一個公會大廳每格都會重抽一個樣子。
+export async function listWorld() {
+  const entries = await store.listDir('world');
+  const out = [];
+  for (const e of entries.filter(e => e.kind === 'directory')) {
+    const card = await store.readJSON(`world/${e.name}/card.json`, null);
+    if (card) out.push(card);
+  }
+  return out.sort((a, b) => a.id.localeCompare(b.id));
+}
+
+export async function saveWorld(card) {
+  await store.writeJSON(`world/${card.id}/card.json`, card);
+}
+
+export async function worldRefDataURL(id) {
+  try {
+    return 'data:image/png;base64,' + await store.readBlobB64(`world/${id}/ref.png`);
+  } catch { return null; }
+}
+
 export async function saveCharacter(card) {
   await store.writeJSON(`characters/${card.id}/card.json`, card);
 }

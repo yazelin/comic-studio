@@ -28,17 +28,25 @@ async function render() {
 async function generatePanel(p, chars, { count, size, onStatus }) {
   const provider = getProvider(app.meta?.providers.image);
   if (!provider) throw new Error('未設定生圖模型(到「專案」選擇)');
-  const promptText = buildPanelPrompt({ style: app.meta.style, panel: p, characterCards: chars });
+  const worlds = await data.listWorld();
+  const promptText = buildPanelPrompt({ style: app.meta.style, panel: p, characterCards: chars, worldCards: worlds });
   // 參考圖:立繪必附;該格寫了表情就附表情集,是動作鏡頭就附動作集。
   // 上限 4 張——再多張特徵會互相污染(cast-lock 實測)。
   const scene = `${p.scene || ''} ${p.shot || ''}`;
   const wantExpr = /表情|情緒|臉/.test(scene);
   const wantPose = /動作|全身|奔跑|跑|走|坐|蹲|站|撲|倒|伸手|後退/.test(scene);
-  // 立繪保底:先讓每個出場角色各佔一張,再用剩下的額度輪流補表情/動作。
+  // 參考圖優先序:場景/道具鎖 → 每個出場角色的立繪(保底一張)→ 剩餘額度輪流補表情/動作。
   // (先前是逐角色塞滿,三人同框時第三個人連立繪都被截掉=保證漂移)
-  const MAX_REFS = 4;
+  // 上限看 provider:codex 那條 API 沒有張數限制(實測 reference_images_base64 無 max_items),
+  // gemini-web 只吃單張、多張會被併成一張,張數一多每張就變小,所以維持 4。
+  const MAX_REFS = app.meta?.providers.image === 'codex-image-service' ? 8 : 4;
   const present = chars.filter(c => p.characters.includes(c.id) || p.characters.includes(c.name));
   const refDataURLs = [];
+  for (const id of (p.world || [])) {
+    if (refDataURLs.length >= MAX_REFS) break;
+    const w = await data.worldRefDataURL(id);
+    if (w) refDataURLs.push(w);
+  }
   for (const c of present) {
     const ref = await data.charSheetDataURL(c.id, 'ref.png');
     if (ref) refDataURLs.push(ref);
