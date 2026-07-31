@@ -160,8 +160,27 @@ $('#do-export').onclick = async () => {
     }
     if (!chapters.length) { setStatus('#export-status', '沒有任何已選定格圖,無可匯出', true); return; }
 
+    // 角色頁素材:名字+文字卡+ref 圖
+    const characters = [];
+    for (const c of await data.listCharacters()) {
+      let image = null;
+      try {
+        const b64 = await store.readBlobB64(`characters/${c.id}/ref.png`);
+        image = `imgs/char-${c.id}.png`;
+        imageBlobs.push({ path: image, blob: store.dataURLtoBlob('data:image/png;base64,' + b64) });
+      } catch { /* 沒 ref 圖就純文字頁 */ }
+      characters.push({ id: c.id, name: c.name, card: c.card || '', image });
+    }
+    // 封面(專案根 cover.png,可選)
+    let cover = null;
+    try {
+      const b64 = await store.readBlobB64('cover.png');
+      cover = 'imgs/cover.png';
+      imageBlobs.push({ path: cover, blob: store.dataURLtoBlob('data:image/png;base64,' + b64) });
+    } catch { /* 沒封面就文字 hero */ }
+
     setStatus('#export-status', '寫入 dist/ …');
-    const files = buildReaderFiles({ title: app.meta.title, chapters });
+    const files = buildReaderFiles({ title: app.meta.title, chapters, characters, site: app.meta.site || {}, cover });
     for (const f of files) await store.writeText('dist/' + f.path, f.content);
     for (const im of imageBlobs) await store.writeBlob('dist/' + im.path, im.blob);
     for (const size of [192, 512]) await store.writeBlob(`dist/icon-${size}.png`, await makeIcon(app.meta.title, size));

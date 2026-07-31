@@ -52,21 +52,22 @@ const files = buildReaderFiles({
   ],
 });
 const paths = files.map(f => f.path);
-for (const p of ['index.html', 'manifest.json', 'sw.js', 'reader.css', 'reader.js', 'data.json']) {
+for (const p of ['index.html', 'manifest.json', 'sw.js', 'style.css', 'app.js', 'read/1.html']) {
   assert.ok(paths.includes(p), `匯出要含 ${p}`);
 }
 const sw = files.find(f => f.path === 'sw.js').content;
-const precache = JSON.parse(sw.match(/const PRECACHE = (\[[^\]]*\])/s)[1]);
-const expected = new Set([...paths.map(p => './' + p), './', './imgs/c1-p1.png', './imgs/c1-p2.png', './icon-192.png', './icon-512.png']);
-assert.deepEqual(new Set(precache), expected, 'precache 清單必須=全部檔案+圖+icons');
+const shellList = JSON.parse(sw.match(/const SHELL_FILES = (\[[^\]]*\])/s)[1]);
+const assetList = JSON.parse(sw.match(/const ASSET_FILES = (\[[^\]]*\])/s)[1]);
+assert.ok(shellList.includes('./read/1.html') && shellList.includes('./style.css'), 'SHELL 快取要含頁面殼');
+assert.deepEqual(new Set(assetList), new Set(['./imgs/c1-p1.png', './imgs/c1-p2.png']), 'ASSET 快取=全部圖');
 assert.ok(sw.includes('ignoreSearch'), 'SW 要 ignoreSearch');
 const idx = files.find(f => f.path === 'index.html').content;
 assert.ok(idx.includes('serviceWorker.register'), 'index 要註冊 SW');
 assert.ok(idx.includes('測試漫畫'));
 const manifest = JSON.parse(files.find(f => f.path === 'manifest.json').content);
 assert.equal(manifest.name, '測試漫畫');
-const data = JSON.parse(files.find(f => f.path === 'data.json').content);
-assert.equal(data.chapters[0].panels[0].bubbles[0].text, '哈囉');
+const rd = files.find(f => f.path === 'read/1.html').content;
+assert.ok(rd.includes('哈囉') && rd.includes('class="bubble speech"'), '章頁要內嵌氣泡');
 
 // ── provider request builders(不打網路,只驗組裝)──
 const codex = buildCodexRequest({ baseurl: 'http://h:8000/', apiKey: 'K', prompt: 'p', refImagesB64: ['AAA'], count: 2, size: '1024x1536' });
@@ -175,20 +176,30 @@ assert.ok(ep2.includes('PURE SOLID BLACK') && ep2.includes('screen'), '光模式
 
 // ── 匯出含效果層 ──
 const filesFx = buildReaderFiles({ title: 'T', chapters: [{ title: 'C1', panels: [
-  { image: 'imgs/a.png', bubbles: [], effects: [{ image: 'imgs/a-fx1.png', x: 50, y: 50, w: 60, rot: 0, op: 100, blend: 'multiply' }] },
-] }] });
-const dataJson = JSON.parse(filesFx.find(f => f.path === 'data.json').content);
-assert.equal(dataJson.chapters[0].panels[0].effects.length, 1, 'data.json 要帶 effects');
+  { image: 'imgs/a.png', bubbles: [{ x: 1, y: 1, text: 'x', type: 'speech', fs: 5 }], effects: [{ image: 'imgs/a-fx1.png', x: 50, y: 50, w: 60, rot: 0, op: 100, blend: 'multiply' }] },
+] }], characters: [{ id: 'yaze', name: '亞澤', card: '卡', image: 'imgs/char-yaze.png' }],
+  site: { url: 'https://ex.com/comic', description: '簡介', author: '林亞澤', links: { github: 'https://g', novel: 'https://n' } }, cover: 'imgs/cover.png' });
+const fxPaths = filesFx.map(f => f.path);
+for (const need of ['index.html', 'read/1.html', 'char/yaze.html', 'style.css', 'app.js', 'manifest.json', 'sw.js', 'sitemap.xml', 'robots.txt'])
+  assert.ok(fxPaths.includes(need), '要有 ' + need);
+const readPage = filesFx.find(f => f.path === 'read/1.html').content;
+assert.ok(readPage.includes('mix-blend-mode'), '閱讀頁要渲染效果層');
+assert.ok(readPage.includes('font-size:5cqw'), '手動字級要進頁面');
+assert.ok(readPage.includes('canonical'), '每章頁要有 canonical');
 const swFx = filesFx.find(f => f.path === 'sw.js').content;
-assert.ok(swFx.includes('./imgs/a-fx1.png'), '效果層圖要進 precache(漏了離線就破功)');
-const readerJs = filesFx.find(f => f.path === 'reader.js').content;
-assert.ok(readerJs.includes('mixBlendMode'), '閱讀器要渲染效果層');
-console.log('effect layers ok');
+assert.ok(swFx.includes('./imgs/a-fx1.png') && swFx.includes('./imgs/char-yaze.png') && swFx.includes('./imgs/cover.png'), '效果層/角色圖/封面要進 ASSET 快取');
+assert.ok(swFx.includes('cs-shell-') && swFx.includes('cs-asset-'), '兩層快取,版本=雜湊');
+const homePage = filesFx.find(f => f.path === 'index.html').content;
+assert.ok(homePage.includes('char/yaze.html') && idx.includes('read/2.html') === false, '首頁列章節與角色');
+assert.ok(homePage.includes('resume-slot'), '首頁有續讀槽');
+assert.ok(homePage.includes('原作小說') && homePage.includes('GitHub'), 'footer 連結(有給的才渲染)');
+// 無 site 設定也要能匯出(不生 sitemap/robots)
+const bare = buildReaderFiles({ title: 'T', chapters: [{ title: 'C', panels: [{ image: 'imgs/a.png', bubbles: [] }] }] });
+assert.ok(!bare.map(f => f.path).includes('sitemap.xml'), '無 url 不生 sitemap');
+console.log('publish-grade export ok');
 
 // ── 手動字級 ──
-const filesFs = buildReaderFiles({ title: 'T', chapters: [{ title: 'C', panels: [{ image: 'imgs/a.png', bubbles: [{ x: 1, y: 1, text: 'x', type: 'speech', fs: 5 }] }] }] });
-assert.ok(filesFs.find(f => f.path === 'reader.js').content.includes('b.fs'), '閱讀器要套用手動字級');
-console.log('manual font size ok');
+console.log('manual font size ok(併入 publish-grade 測試)');
 
 // ── 分鏡要求微表情 ──
 assert.ok(buildStoryboardPrompt('x', []).includes('表情:'), '分鏡指令要求微表情欄');
