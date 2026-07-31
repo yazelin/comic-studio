@@ -17,6 +17,7 @@ comic-studio 的定位:**人審人調的工作台+可執行的輸出標準**。�
 ## 產線(agent 的標準步驟)
 
 1. **分鏡**:正文→storyboard.json(格數/鏡頭/台詞含四型 speech|thought|narration|sfx/微表情)。台詞一律**全形標點**。
+   - 開生圖前跑 `node tools/lint-storyboard.mjs <專案資料夾> [章節dir]`(全形標點/微表情/四型/speaker 在角色表/id 不重複),有問題 exit 1。**這一關在分鏡層修最便宜**——半形標點補過兩輪、微表情事後回填 37 格,都是漏掉這關的帳。
 2. **生圖**:逐格 image provider(參考圖:角色卡 ref 必附;鏈式參考時**首圖先驗過再開鏈**——第一張的風格會傳染整條線;暗景要明令「NOT photorealistic」)。存 `cand-N.png`,不覆蓋舊候選。
 3. **人排版**(UI):這一步是人的;agent 不要動 bubbles 內容。
 4. **驗收**:逐格驗(角色一致/風格一致/表情到位/世界觀無破格——現代物件=紅線)。

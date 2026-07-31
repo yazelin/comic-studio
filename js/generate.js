@@ -34,21 +34,23 @@ async function generatePanel(p, chars, { count, size, onStatus }) {
   const scene = `${p.scene || ''} ${p.shot || ''}`;
   const wantExpr = /表情|情緒|臉/.test(scene);
   const wantPose = /動作|全身|奔跑|跑|走|坐|蹲|站|撲|倒|伸手|後退/.test(scene);
+  // 立繪保底:先讓每個出場角色各佔一張,再用剩下的額度輪流補表情/動作。
+  // (先前是逐角色塞滿,三人同框時第三個人連立繪都被截掉=保證漂移)
+  const MAX_REFS = 4;
+  const present = chars.filter(c => p.characters.includes(c.id) || p.characters.includes(c.name));
   const refDataURLs = [];
-  for (const c of chars) {
-    if (!(p.characters.includes(c.id) || p.characters.includes(c.name))) continue;
+  for (const c of present) {
     const ref = await data.charSheetDataURL(c.id, 'ref.png');
     if (ref) refDataURLs.push(ref);
-    if (wantExpr) {
-      const e = await data.charSheetDataURL(c.id, 'expr.png');
-      if (e) refDataURLs.push(e);
-    }
-    if (wantPose) {
-      const s = await data.charSheetDataURL(c.id, 'pose.png');
+  }
+  for (const file of [...(wantExpr ? ['expr.png'] : []), ...(wantPose ? ['pose.png'] : [])]) {
+    for (const c of present) {
+      if (refDataURLs.length >= MAX_REFS) break;
+      const s = await data.charSheetDataURL(c.id, file);
       if (s) refDataURLs.push(s);
     }
   }
-  refDataURLs.length = Math.min(refDataURLs.length, 4);
+  refDataURLs.length = Math.min(refDataURLs.length, MAX_REFS);
   const imgs = await generateImages({ provider, prompt: promptText, refDataURLs, count, size, onStatus });
   const existing = await data.listCandidates(app.chapter, p.id);
   let n = existing.length;
