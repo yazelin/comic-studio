@@ -6,13 +6,34 @@
 // 所有圖檔路徑,漏一張離線就破功。
 //
 // site 設定(project.json 的 site 欄,全部可選):
-//   { url, description, author, links:{github,facebook,coffee,novel}, storageKey }
+//   { url, description, author, links:{github,facebook,coffee,novel}, storageKey, theme, colors }
 
-const DEFAULT_COLORS = { bg: '#f4f1ea', ink: '#2a2622', dim: '#7a7266', line: 'rgba(0,0,0,.08)', accent: '#b98d2f', panelGap: '#e9e4d8' };
+// 出版範本:一組名字帶一整套色票(站台底色+氣泡)。site.theme 選範本,site.colors 再逐項覆蓋。
+// accent 在整個匯出站只用在一個地方:閱讀進度條。挑範本的 accent 時記得它代表「讀掉多少」。
+// 內心的白光暈與效果字的白描邊不進範本:它們是壓在畫格上的,要跟畫分離而不是跟站台底色搭。
+// ponytail: 四個範本的 bubbleBg 都是白,所以工作台預覽沒接範本;哪天有範本要換泡色,
+// 得把 --bub 那組變數接到 studio 的排版區,否則預覽會跟成品不同色。
+export const THEMES = {
+  // 暖紙:預設。米白紙感+墨字+低調金,通吃大部分作品
+  paper: { bg: '#f4f1ea', ink: '#2a2622', dim: '#7a7266', line: 'rgba(0,0,0,.08)', accent: '#b98d2f', panelGap: '#e9e4d8',
+    bubbleBg: '#fff', bubbleInk: '#111', narrationBg: 'rgba(16,16,20,.72)', narrationInk: '#f2f0ea' },
+  // 土金:給《token 無限》。全書低飽和土色調,金(#F6C945)是保留色=「被花掉的他」。
+  // 站台唯一的金給進度條——讀掉多少=被花掉多少,剛好是這本書的主題,金不會散在別處亂叫。
+  // 旁白條跟著換成深土褐,深黑條在土色書裡會跳出來。
+  'token-unlimited': { bg: '#e8e0d2', ink: '#2b2620', dim: '#7d7263', line: 'rgba(0,0,0,.10)', accent: '#F6C945', panelGap: '#d9cfbd',
+    bubbleBg: '#fff', bubbleInk: '#1c1813', narrationBg: 'rgba(43,38,32,.76)', narrationInk: '#efe8db' },
+  // 製版桌:comic-studio 站同款。墨黑底+暖紙白字+朱紅
+  workbench: { bg: '#101013', ink: '#eceae4', dim: '#97959c', line: '#2b2b31', accent: '#d9482b', panelGap: '#17171b',
+    bubbleBg: '#fff', bubbleInk: '#111', narrationBg: 'rgba(240,238,232,.9)', narrationInk: '#17171b' },
+  // 深夜:neko-tensei 那種深藍夜色+金。原站有 panel/粉色副 accent 這裡沒有,只做到近似
+  midnight: { bg: '#12141d', ink: '#e8e6df', dim: '#a8a89f', line: 'rgba(232,194,106,.22)', accent: '#e8c26a', panelGap: '#1b1e2b',
+    bubbleBg: '#fff', bubbleInk: '#12141d', narrationBg: 'rgba(18,20,29,.82)', narrationInk: '#e8e6df' },
+};
 
 export function buildReaderFiles({ title, chapters, characters = [], site = {}, cover = null, assetsVersion = null, fontPath = 'fonts/comic-tc.woff2' }) {
   const KEY = 'comic-' + (site.storageKey || title);
-  const C = { ...DEFAULT_COLORS, ...(site.colors || {}) };
+  // 疊三層:暖紙打底(範本沒給的欄位有值可用)→ 選定範本 → site.colors 逐項覆蓋。名字打錯就退回暖紙。
+  const C = { ...THEMES.paper, ...(THEMES[site.theme] || {}), ...(site.colors || {}) };
   const files = [];
   const imagePaths = chapters.flatMap(ch => ch.panels.flatMap(p => [p.image, ...(p.effects || []).map(f => f.image)]));
   for (const c of characters) {
@@ -21,7 +42,7 @@ export function buildReaderFiles({ title, chapters, characters = [], site = {}, 
   }
   if (cover) imagePaths.push(cover);
 
-  files.push({ path: 'style.css', content: `:root{--bg:${C.bg};--ink:${C.ink};--dim:${C.dim};--line:${C.line};--acc:${C.accent};--gap:${C.panelGap}}\n` + SITE_CSS });
+  files.push({ path: 'style.css', content: `:root{--bg:${C.bg};--ink:${C.ink};--dim:${C.dim};--line:${C.line};--acc:${C.accent};--gap:${C.panelGap};--bub:${C.bubbleBg};--bub-ink:${C.bubbleInk};--narr:${C.narrationBg};--narr-ink:${C.narrationInk}}\n` + SITE_CSS });
   files.push({ path: 'app.js', content: appJs(KEY) });
   site = { ...site, _bg: C.bg };
   files.push({ path: 'index.html', content: indexHtml({ title, chapters, characters, site, cover }) });
@@ -304,26 +325,26 @@ h1, h2 { font-weight: 700; }
 .panel { position: relative; margin: 0 0 6px; container-type: inline-size; background: var(--gap); }
 .panel > img { display: block; width: 100%; height: auto; }
 .fx { position: absolute; transform: translate(-50%, -50%); pointer-events: none; }
-.bubble { position: absolute; transform: translate(-50%, -50%); width: max-content; background: #fff; color: #111; padding: .5em .8em; border-radius: 1em; font-family: 'Comic TC', "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif; font-size: clamp(13px, 3.4cqw, 22px); line-height: 1.6; letter-spacing: .02em; max-width: 46%; box-shadow: 0 1px 4px rgba(0,0,0,.35); }
+.bubble { position: absolute; transform: translate(-50%, -50%); width: max-content; background: var(--bub); color: var(--bub-ink); padding: .5em .8em; border-radius: 1em; font-family: 'Comic TC', "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif; font-size: clamp(13px, 3.4cqw, 22px); line-height: 1.6; letter-spacing: .02em; max-width: 46%; box-shadow: 0 1px 4px rgba(0,0,0,.35); }
 /* 對白泡的尾巴——只有對白有;八方向 + t-none 不要。
    上下左右=border 三角形。斜角改用 clip-path 切直角三角形:轉開三角形會讓底邊離開泡緣、
    只剩一小截露在外面(看起來像貼邊的扁片),直角三角形的底邊天生貼平,尖角自然指向斜方。 */
 .bubble.speech::after { content: ''; position: absolute; width: 0; height: 0; border: .5em solid transparent; }
 .bubble.speech.t-none::after { content: none; }
-.bubble.speech.t-bottom::after { top: 100%; left: 50%; margin: -1px 0 0 -.5em; border-bottom: 0; border-top-color: #fff; }
-.bubble.speech.t-top::after { bottom: 100%; left: 50%; margin: 0 0 -1px -.5em; border-top: 0; border-bottom-color: #fff; }
-.bubble.speech.t-left::after { right: 100%; top: 50%; margin: -.5em -1px 0 0; border-left: 0; border-right-color: #fff; }
-.bubble.speech.t-right::after { left: 100%; top: 50%; margin: -.5em 0 0 -1px; border-right: 0; border-left-color: #fff; }
+.bubble.speech.t-bottom::after { top: 100%; left: 50%; margin: -1px 0 0 -.5em; border-bottom: 0; border-top-color: var(--bub); }
+.bubble.speech.t-top::after { bottom: 100%; left: 50%; margin: 0 0 -1px -.5em; border-top: 0; border-bottom-color: var(--bub); }
+.bubble.speech.t-left::after { right: 100%; top: 50%; margin: -.5em -1px 0 0; border-left: 0; border-right-color: var(--bub); }
+.bubble.speech.t-right::after { left: 100%; top: 50%; margin: -.5em 0 0 -1px; border-right: 0; border-left-color: var(--bub); }
 .bubble.speech.t-bottom-left::after,
 .bubble.speech.t-bottom-right::after,
 .bubble.speech.t-top-left::after,
-.bubble.speech.t-top-right::after { border: 0; background: #fff; width: .95em; height: .95em; }
+.bubble.speech.t-top-right::after { border: 0; background: var(--bub); width: .95em; height: .95em; }
 .bubble.speech.t-bottom-left::after { top: 100%; left: 20%; margin: -1px 0 0; clip-path: polygon(100% 0, 0 0, 0 100%); }
 .bubble.speech.t-bottom-right::after { top: 100%; right: 20%; margin: -1px 0 0; clip-path: polygon(0 0, 100% 0, 100% 100%); }
 .bubble.speech.t-top-left::after { bottom: 100%; left: 20%; margin: 0 0 -1px; clip-path: polygon(0 0, 100% 100%, 0 100%); }
 .bubble.speech.t-top-right::after { bottom: 100%; right: 20%; margin: 0 0 -1px; clip-path: polygon(100% 0, 100% 100%, 0 100%); }
 .bubble.thought { background: none; box-shadow: none; border: none; color: #1c1a17; font-weight: 500; text-shadow: 0 0 6px #fff, 0 0 3px #fff, 0 0 1px #fff, 0 0 10px rgba(255,255,255,.8); }
-.bubble.narration { background: rgba(16,16,20,.72); color: #f2f0ea; border-radius: 3px; border: none; padding: .55em .9em; font-weight: 400; }
+.bubble.narration { background: var(--narr); color: var(--narr-ink); border-radius: 3px; border: none; padding: .55em .9em; font-weight: 400; }
 .bubble.sfx { background: none; box-shadow: none; color: #111; font-weight: 900; font-size: clamp(22px, 7cqw, 44px); letter-spacing: .06em; transform: translate(-50%,-50%) rotate(-6deg); text-shadow: 1px 1px 0 #fff, -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff; }
 .bubble .spk { display: block; font-size: .72em; color: #888; margin-bottom: .15em; }
 .reader-nav { display: flex; justify-content: space-between; padding: 1.4rem .9rem 0; font-size: .98rem; }
