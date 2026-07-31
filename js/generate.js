@@ -29,7 +29,7 @@ async function generatePanel(p, chars, { count, size, onStatus }) {
   const provider = getProvider(app.meta?.providers.image);
   if (!provider) throw new Error('未設定生圖模型(到「專案」選擇)');
   const worlds = await data.listWorld();
-  const promptText = buildPanelPrompt({ style: app.meta.style, panel: p, characterCards: chars, worldCards: worlds });
+  const promptText = buildPanelPrompt({ style: app.meta.style, panel: p, characterCards: chars, worldCards: worlds, rules: app.meta.rules || [] });
   // 參考圖:立繪必附;該格寫了表情就附表情集,是動作鏡頭就附動作集。
   // 上限 4 張——再多張特徵會互相污染(cast-lock 實測)。
   const scene = `${p.scene || ''} ${p.shot || ''}`;
@@ -42,6 +42,17 @@ async function generatePanel(p, chars, { count, size, onStatus }) {
   const MAX_REFS = app.meta?.providers.image === 'codex-image-service' ? 8 : 4;
   const present = chars.filter(c => p.characters.includes(c.id) || p.characters.includes(c.name));
   const refDataURLs = [];
+  // 承前格:前一格的成品同時帶著場景、角色與姿勢,是最強的連戲訊號,所以排第一
+  if (p.continues) {
+    const prev = await data.loadPanelState(app.chapter, p.continues).catch(() => null);
+    if (prev?.chosen) {
+      const u = await data.panelImageURL(app.chapter, p.continues, prev.chosen);
+      if (u) {
+        const blob = await (await fetch(u)).blob();
+        refDataURLs.push(await new Promise(ok => { const r = new FileReader(); r.onload = () => ok(r.result); r.readAsDataURL(blob); }));
+      }
+    }
+  }
   for (const id of (p.world || [])) {
     if (refDataURLs.length >= MAX_REFS) break;
     const w = await data.worldRefDataURL(id);
