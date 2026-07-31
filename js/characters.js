@@ -28,6 +28,7 @@ async function renderCard(c, all) {
       : h('div', { class: 'noimg' }, '尚無設定圖'),
     h('div', { class: 'cid' }, 'id:' + c.id),
     h('label', {}, '名字', h('input', { value: c.name, onchange: e => { c.name = e.target.value; data.saveCharacter(c); } })),
+    h('label', {}, '讀者介紹(中文,匯出的角色頁用;留空則顯示設定卡)', h('textarea', { rows: 3, onchange: e => { c.bio = e.target.value; data.saveCharacter(c); } }, c.bio || '')),
     h('label', {}, '外觀設定卡', h('textarea', { rows: 4, placeholder: '髮型、體型、服裝、特徵…越具體越穩', onchange: e => { c.card = e.target.value; data.saveCharacter(c); } }, c.card)),
     h('div', { class: 'actions' },
       h('button', { onclick: () => genRef(c, false) }, '生成立繪'),

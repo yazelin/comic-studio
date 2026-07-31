@@ -169,7 +169,7 @@ $('#do-export').onclick = async () => {
         image = `imgs/char-${c.id}.png`;
         imageBlobs.push({ path: image, blob: store.dataURLtoBlob('data:image/png;base64,' + b64) });
       } catch { /* 沒 ref 圖就純文字頁 */ }
-      characters.push({ id: c.id, name: c.name, card: c.card || '', image });
+      characters.push({ id: c.id, name: c.name, card: c.card || '', bio: c.bio || '', image });
     }
     // 封面(專案根 cover.png,可選)
     let cover = null;
