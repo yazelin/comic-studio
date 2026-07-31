@@ -50,7 +50,7 @@ export function buildReaderFiles({ title, chapters, characters = [], site = {}, 
   if (cover) imagePaths.push(cover);
 
   files.push({ path: 'style.css', content: `:root{--bg:${C.bg};--ink:${C.ink};--dim:${C.dim};--line:${C.line};--acc:${C.accent};--gap:${C.panelGap};--bub:${C.bubbleBg};--bub-ink:${C.bubbleInk};--narr:${C.narrationBg};--narr-ink:${C.narrationInk};--surf:${C.surface};--acc2:${C.accentSoft}}\n` + SITE_CSS });
-  files.push({ path: 'app.js', content: appJs(KEY) });
+  files.push({ path: 'app.js', content: appJs(KEY, chapters.map(c => c.title)) });
   site = { ...site, _bg: C.bg };
   files.push({ path: 'index.html', content: indexHtml({ title, chapters, characters, site, cover }) });
   chapters.forEach((ch, i) => {
@@ -233,10 +233,12 @@ self.addEventListener('fetch', e => {
 
 // ── 前端行為:頂欄隱現、進度條、進度記憶、首頁續讀 ──
 
-function appJs(KEY) {
+function appJs(KEY, titles = []) {
   return `(function(){
 'use strict';
 var KEY=${JSON.stringify(KEY)};
+// 話數≠小說章號(第 1 話可能叫「序章」),續讀連結一律用該話的真章名,沒有才退回話數
+var TITLES=${JSON.stringify(titles)};
 function read(){try{return JSON.parse(localStorage.getItem(KEY))||null}catch(e){return null}}
 function write(ep,p){try{localStorage.setItem(KEY,JSON.stringify({ep:ep,p:p,at:Date.now()}))}catch(e){}}
 var reader=document.querySelector('main.reader');
@@ -271,7 +273,7 @@ if(slot){
   if(s2&&s2.ep){
     var a=document.createElement('a');
     a.className='resume';a.href='read/'+s2.ep+'.html';
-    a.textContent='繼續閱讀 › 第 '+s2.ep+' 章・第 '+((s2.p||0)+1)+' 格';
+    a.textContent='繼續閱讀 › '+(TITLES[s2.ep-1]||('第 '+s2.ep+' 話'))+'・第 '+((s2.p||0)+1)+' 格';
     slot.appendChild(a);
   }
 }
