@@ -211,3 +211,11 @@ const bioFiles = buildReaderFiles({ title: 'T', chapters: [{ title: 'C', panels:
 const cp = bioFiles.find(f => f.path === 'char/x.html').content;
 assert.ok(cp.includes('中文介紹') && !cp.includes('EN PROMPT'), '角色頁 bio 優先於生圖卡');
 console.log('char bio ok');
+
+// ── 配色:預設暖紙+可覆寫 ──
+const warm = buildReaderFiles({ title: 'T', chapters: [{ title: 'C', panels: [{ image: 'imgs/a.png', bubbles: [] }] }] });
+assert.ok(warm.find(f => f.path === 'style.css').content.includes('--bg:#f4f1ea'), '預設暖紙底');
+assert.ok(JSON.parse(warm.find(f => f.path === 'manifest.json').content).theme_color === '#f4f1ea', 'manifest 同步色票');
+const dark = buildReaderFiles({ title: 'T', chapters: [{ title: 'C', panels: [{ image: 'imgs/a.png', bubbles: [] }] }], site: { colors: { bg: '#111114' } } });
+assert.ok(dark.find(f => f.path === 'style.css').content.includes('--bg:#111114'), 'site.colors 可覆寫');
+console.log('palette ok');
