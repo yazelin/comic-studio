@@ -189,3 +189,7 @@ console.log('effect layers ok');
 const filesFs = buildReaderFiles({ title: 'T', chapters: [{ title: 'C', panels: [{ image: 'imgs/a.png', bubbles: [{ x: 1, y: 1, text: 'x', type: 'speech', fs: 5 }] }] }] });
 assert.ok(filesFs.find(f => f.path === 'reader.js').content.includes('b.fs'), '閱讀器要套用手動字級');
 console.log('manual font size ok');
+
+// ── 分鏡要求微表情 ──
+assert.ok(buildStoryboardPrompt('x', []).includes('表情:'), '分鏡指令要求微表情欄');
+console.log('expression rule ok');
