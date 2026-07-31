@@ -278,3 +278,9 @@ dialog::backdrop { background: rgba(8,8,10,.72); }
 /* 效果圖層(排版工作台) */
 .ly-panel .fx { position: absolute; transform: translate(-50%,-50%); cursor: grab; }
 .ly-tools { display: flex; gap: .5rem; margin: .35rem 0 0; }
+
+/* 角色設定表(立繪/表情集/動作集) */
+.sheet-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: .5rem; margin-bottom: .6rem; }
+.sheet { text-align: center; font-size: .74rem; color: var(--dim); }
+.sheet img { width: 100%; aspect-ratio: 1/1; object-fit: cover; object-position: top; border-radius: 6px; cursor: zoom-in; }
+.sheet .noimg { aspect-ratio: 1/1; display: grid; place-items: center; border: 1px dashed var(--line); border-radius: 6px; }

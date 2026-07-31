@@ -56,6 +56,21 @@ export async function saveCharacter(card) {
   await store.writeJSON(`characters/${card.id}/card.json`, card);
 }
 
+// 角色設定表:立繪(長相服裝)/表情集(情緒)/動作集(體態)——生圖時依該格需要挑著附
+export const CHAR_SHEETS = [
+  { key: 'ref', file: 'ref.png', label: '立繪' },
+  { key: 'expr', file: 'expr.png', label: '表情集' },
+  { key: 'pose', file: 'pose.png', label: '動作集' },
+];
+
+export async function charSheetURL(id, file) {
+  return store.readBlobURL(`characters/${id}/${file}`);
+}
+export async function charSheetDataURL(id, file) {
+  try {
+    return 'data:image/png;base64,' + await store.readBlobB64(`characters/${id}/${file}`);
+  } catch { return null; }
+}
 export async function charRefURL(id) {
   return store.readBlobURL(`characters/${id}/ref.png`);
 }

@@ -82,11 +82,39 @@ export function buildCharacterSheetPrompt({ style, name, card }) {
   ].join('\n');
 }
 
+// 表情集/動作集:以立繪當參考圖(image-edit),同一張臉/同一套衣服,只換情緒或體態。
+// 為什麼要有:只給一張中性立繪,生圖的臉會一路趨中——連載讀者第一個抱怨就是「表情太少」。
+export function buildExpressionSheetPrompt({ style, name, card, emotions = [] }) {
+  const list = emotions.length ? emotions : ['驚訝', '恐懼', '沉思', '專注', '苦笑', '力竭', '釋然', '放空', '生氣'];
+  return [
+    `EXPRESSION SHEET for the character in the reference image (same face, same hair, same clothes, same art style).`,
+    `Character: ${name}. ${card}`,
+    `Art style: ${style}`,
+    `Layout: a clean 3x3 grid of NINE head-and-shoulders portraits of this SAME character on a plain neutral background, evenly spaced, no frames, no labels, no text of any kind.`,
+    `The nine expressions, in reading order: ${list.join(' / ')}.`,
+    `Each expression must be clearly distinguishable in the eyes, brows and mouth, but stay within this character's restrained personality — no exaggerated cartoon faces, no sweat drops or anime symbols.`,
+    'No text, no letters, no watermark.',
+  ].join('\n');
+}
+
+export function buildPoseSheetPrompt({ style, name, card, poses = [] }) {
+  const list = poses.length ? poses : ['站立', '行走', '奔跑', '坐在石頭上', '蹲下', '伸手向前', '後退防禦', '仰頭看天', '跌坐在地'];
+  return [
+    `POSE SHEET for the character in the reference image (same face, same hair, same clothes, same art style).`,
+    `Character: ${name}. ${card}`,
+    `Art style: ${style}`,
+    `Layout: a clean 3x3 grid of NINE full-body poses of this SAME character on a plain neutral background, evenly spaced, no frames, no labels, no text of any kind.`,
+    `The nine poses, in reading order: ${list.join(' / ')}.`,
+    'Natural, grounded body language with correct anatomy and correct gravity on clothing; no heroic or exaggerated stances.',
+    'No text, no letters, no watermark.',
+  ].join('\n');
+}
+
 // 單格生圖 prompt = 全域畫風 + 鏡頭 + 場景 + 出場角色設定卡 + 禁畫字
 export function buildPanelPrompt({ style, panel, characterCards = [] }) {
   const cast = characterCards
     .filter(c => panel.characters.includes(c.id) || panel.characters.includes(c.name))
-    .map(c => `- ${c.name}: ${c.card}`);
+    .map(c => `- ${c.name}: ${c.card}${c.must_not ? `\n  絕對不可出現: ${c.must_not}` : ''}`);
   return [
     `畫風: ${style}`,
     `鏡頭: ${panel.shot || '中景'}`,

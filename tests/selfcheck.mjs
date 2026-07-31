@@ -115,7 +115,7 @@ assert.ok(ch.text.includes('「引號」&符號'), '實體要解碼');
 assert.throws(() => extractChapterFromHTML('<html><body><div>沒有段落</div></body></html>'), /段落/);
 
 // ── buildCharacterSheetPrompt(多視角設定圖)──
-const { buildCharacterSheetPrompt } = await import('../js/prompt.js');
+const { buildCharacterSheetPrompt, buildExpressionSheetPrompt, buildPoseSheetPrompt } = await import('../js/prompt.js');
 const csp = buildCharacterSheetPrompt({ style: '黑白漫畫', name: '亞澤', card: '黑髮工程師' });
 assert.ok(csp.includes('三視角') && csp.includes('表情差分'), '要含多視角與表情要求');
 assert.ok(csp.includes('黑髮工程師') && csp.includes('黑白漫畫'));
@@ -230,3 +230,14 @@ const noLinks = buildReaderFiles({ title: 'T', chapters: [{ title: 'C', panels: 
 const nl = noLinks.find(f => f.path === 'index.html').content;
 assert.ok(nl.includes('aria-label="GitHub"') && !nl.includes('請我喝咖啡'), '沒給的連結不渲染');
 console.log('footer trio ok');
+
+// ── 角色設定表:表情集/動作集/must_not ──
+const ep = buildExpressionSheetPrompt({ style: '暖色動畫風', name: '陸修', card: 'young man' });
+assert.ok(ep.includes('3x3') && ep.includes('沉思') && ep.includes('same face'), '表情集=九宮格同一張臉');
+assert.ok(ep.includes('no exaggerated'), '表情要克制,不誇張');
+const pp2 = buildPoseSheetPrompt({ style: '暖色動畫風', name: '陸修', card: 'young man' });
+assert.ok(pp2.includes('3x3') && pp2.includes('full-body') && pp2.includes('跌坐在地'), '動作集=九宮格全身');
+const withNot = buildPanelPrompt({ style: 's', panel: { scene: 'x', shot: '中景', characters: ['a'], notes: '' },
+  characterCards: [{ id: 'a', name: 'A', card: 'card', must_not: '帽子' }] });
+assert.ok(withNot.includes('絕對不可出現: 帽子'), 'must_not 要進格 prompt');
+console.log('character sheets ok');

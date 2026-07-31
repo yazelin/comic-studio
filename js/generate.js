@@ -29,13 +29,26 @@ async function generatePanel(p, chars, { count, size, onStatus }) {
   const provider = getProvider(app.meta?.providers.image);
   if (!provider) throw new Error('未設定生圖模型(到「專案」選擇)');
   const promptText = buildPanelPrompt({ style: app.meta.style, panel: p, characterCards: chars });
+  // 參考圖:立繪必附;該格寫了表情就附表情集,是動作鏡頭就附動作集。
+  // 上限 4 張——再多張特徵會互相污染(cast-lock 實測)。
+  const scene = `${p.scene || ''} ${p.shot || ''}`;
+  const wantExpr = /表情|情緒|臉/.test(scene);
+  const wantPose = /動作|全身|奔跑|跑|走|坐|蹲|站|撲|倒|伸手|後退/.test(scene);
   const refDataURLs = [];
   for (const c of chars) {
-    if (p.characters.includes(c.id) || p.characters.includes(c.name)) {
-      const u = await data.charRefDataURL(c.id);
-      if (u) refDataURLs.push(u);
+    if (!(p.characters.includes(c.id) || p.characters.includes(c.name))) continue;
+    const ref = await data.charSheetDataURL(c.id, 'ref.png');
+    if (ref) refDataURLs.push(ref);
+    if (wantExpr) {
+      const e = await data.charSheetDataURL(c.id, 'expr.png');
+      if (e) refDataURLs.push(e);
+    }
+    if (wantPose) {
+      const s = await data.charSheetDataURL(c.id, 'pose.png');
+      if (s) refDataURLs.push(s);
     }
   }
+  refDataURLs.length = Math.min(refDataURLs.length, 4);
   const imgs = await generateImages({ provider, prompt: promptText, refDataURLs, count, size, onStatus });
   const existing = await data.listCandidates(app.chapter, p.id);
   let n = existing.length;
