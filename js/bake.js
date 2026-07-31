@@ -180,7 +180,8 @@ $('#do-export').onclick = async () => {
     } catch { /* 沒封面就文字 hero */ }
 
     setStatus('#export-status', '寫入 dist/ …');
-    const files = buildReaderFiles({ title: app.meta.title, chapters, characters, site: app.meta.site || {}, cover });
+    const totalBytes = imageBlobs.reduce((n, im) => n + im.blob.size, 0);
+    const files = buildReaderFiles({ title: app.meta.title, chapters, characters, site: app.meta.site || {}, cover, assetsVersion: imageBlobs.length + '-' + totalBytes });
     for (const f of files) await store.writeText('dist/' + f.path, f.content);
     for (const im of imageBlobs) await store.writeBlob('dist/' + im.path, im.blob);
     for (const size of [192, 512]) await store.writeBlob(`dist/icon-${size}.png`, await makeIcon(app.meta.title, size));
