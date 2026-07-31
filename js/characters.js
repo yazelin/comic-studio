@@ -3,7 +3,7 @@ import { $, h, toast, setStatus, modal, confirmDialog, lightbox } from './ui.js'
 import * as store from './store.js';
 import * as data from './data.js';
 import { getProvider, generateImages } from './providers.js';
-import { buildCharacterSheetPrompt } from './prompt.js';
+import { buildCharacterSheetPrompt, buildExpressionSheetPrompt, buildPoseSheetPrompt } from './prompt.js';
 import { applyCharacterMerge } from './merge.js';
 import { app, requireProject } from './app.js';
 
@@ -21,19 +21,30 @@ export async function refreshCharacters() {
 }
 
 async function renderCard(c, all) {
-  const url = await data.charRefURL(c.id);
+  const sheets = [];
+  for (const s of data.CHAR_SHEETS) {
+    let u = null;
+    try { u = await data.charSheetURL(c.id, s.file); } catch { /* 沒這張就跳過 */ }
+    sheets.push({ ...s, url: u });
+  }
+  const strip = h('div', { class: 'sheet-strip' }, ...sheets.map(s => h('div', { class: 'sheet' },
+    s.url ? h('img', { src: s.url, alt: `${c.name} ${s.label}`, onclick: () => lightbox(s.url) })
+          : h('div', { class: 'noimg' }, '無'),
+    h('span', {}, s.label),
+  )));
   return h('div', { class: 'char-card' },
-    url
-      ? h('img', { src: url, alt: c.name, onclick: () => lightbox(url) })
-      : h('div', { class: 'noimg' }, '尚無設定圖'),
+    strip,
     h('div', { class: 'cid' }, 'id:' + c.id),
     h('label', {}, '名字', h('input', { value: c.name, onchange: e => { c.name = e.target.value; data.saveCharacter(c); } })),
     h('label', {}, '讀者介紹(中文,匯出的角色頁用;留空則顯示設定卡)', h('textarea', { rows: 3, onchange: e => { c.bio = e.target.value; data.saveCharacter(c); } }, c.bio || '')),
     h('label', {}, '外觀設定卡', h('textarea', { rows: 4, placeholder: '髮型、體型、服裝、特徵…越具體越穩', onchange: e => { c.card = e.target.value; data.saveCharacter(c); } }, c.card)),
+    h('label', {}, '絕對不可出現(模型最愛自己補的東西:帽子、眼鏡、現代服裝…)', h('input', { value: c.must_not || '', placeholder: '例:頭帶或任何帽子、十字架、現代服裝', onchange: e => { c.must_not = e.target.value; data.saveCharacter(c); } })),
     h('div', { class: 'actions' },
       h('button', { onclick: () => genRef(c, false) }, '生成立繪'),
-      h('button', { onclick: () => genRef(c, true), title: '三視角+表情差分,一致性更穩' }, '多視角設定圖'),
-      h('button', { onclick: () => uploadRef(c) }, '上傳'),
+      h('button', { onclick: () => genRef(c, true), title: '三視角,一致性更穩' }, '多視角設定圖'),
+      h('button', { onclick: () => genSheet(c, 'expr'), title: '九宮格情緒;沒有它,每格的臉都會趨中' }, '表情集'),
+      h('button', { onclick: () => genSheet(c, 'pose'), title: '九宮格全身動態' }, '動作集'),
+      h('button', { onclick: () => uploadRef(c) }, '上傳立繪'),
       h('button', { onclick: () => mergeChar(c, all) }, '合併…'),
       h('button', { class: 'danger', onclick: async () => {
         if (await confirmDialog(`刪除角色 ${c.name}?`, '刪除')) { await store.removeEntry('characters/' + c.id); refreshCharacters(); }
@@ -83,6 +94,30 @@ async function genRef(c, sheet) {
     });
     await store.writeBlob(`characters/${c.id}/ref.png`, store.dataURLtoBlob(img));
     setStatus('#char-status', `${c.name} 完成`);
+    refreshCharacters();
+  } catch (e) {
+    setStatus('#char-status', '失敗:' + e.message, true);
+  }
+}
+
+// 表情集/動作集:一定要以立繪當參考圖,否則等於重抽一個人
+async function genSheet(c, kind) {
+  const provider = getProvider(app.meta?.providers.image);
+  if (!provider) { toast('未設定生圖模型(到「專案」選擇)'); return; }
+  const base = await data.charSheetDataURL(c.id, 'ref.png');
+  if (!base) { toast('請先有立繪,表情/動作集要照著它畫'); return; }
+  const label = kind === 'expr' ? '表情集' : '動作集';
+  try {
+    setStatus('#char-status', `生成 ${c.name} ${label}…`);
+    const prompt = kind === 'expr'
+      ? buildExpressionSheetPrompt({ style: app.meta.style, name: c.name, card: c.card })
+      : buildPoseSheetPrompt({ style: app.meta.style, name: c.name, card: c.card });
+    const [img] = await generateImages({
+      provider, prompt, refDataURLs: [base], count: 1, size: '1536x1024',
+      onStatus: m => setStatus('#char-status', m),
+    });
+    await store.writeBlob(`characters/${c.id}/${kind}.png`, store.dataURLtoBlob(img));
+    setStatus('#char-status', `${c.name} ${label} 完成`);
     refreshCharacters();
   } catch (e) {
     setStatus('#char-status', '失敗:' + e.message, true);
