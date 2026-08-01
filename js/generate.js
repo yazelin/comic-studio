@@ -30,13 +30,13 @@ async function generatePanel(p, chars, { count, size, onStatus }) {
   if (!provider) throw new Error('未設定生圖模型(到「專案」選擇)');
   const worlds = await data.listWorld();
   const scenes = await data.listScenes(app.chapter);
-  const scene = scenes.find(s => s.id === p.scene_id) || null;
+  const sceneDef = scenes.find(s => s.id === p.scene_id) || null;
   // changes 要知道「這一格排在第幾」才判斷得出哪些變更已經發生
   const allPanels = (await data.loadStoryboard(app.chapter)).panels || [];
   // 場次的 world/機位當預設:整場共用的東西寫一次,單格要覆寫再自己填
-  if (scene) {
-    if (!(p.world || []).length && scene.world) p = { ...p, world: scene.world };
-    if (!p.camera && scene.camera_default) p = { ...p, camera: scene.camera_default };
+  if (sceneDef) {
+    if (!(p.world || []).length && sceneDef.world) p = { ...p, world: sceneDef.world };
+    if (!p.camera && sceneDef.camera_default) p = { ...p, camera: sceneDef.camera_default };
   }
   const promptText = [
     buildPanelPrompt({ style: app.meta.style, panel: p, characterCards: chars, worldCards: worlds, rules: app.meta.rules || [] }),
