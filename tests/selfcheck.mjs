@@ -1,5 +1,7 @@
 // node tests/selfcheck.mjs — 純邏輯自我檢查,全綠才算過
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
+import { readdirSync } from 'node:fs';
 import { buildStoryboardPrompt, parseStoryboard, buildPanelPrompt, buildBakePrompt, buildEffectPrompt } from '../js/prompt.js';
 import { buildReaderFiles } from '../js/export.js';
 import { buildCodexRequest, buildGeminiWebRequest, buildOpenAIImageRequest, buildChatRequest } from '../js/providers-core.js';
@@ -467,3 +469,11 @@ console.log('studio/export parity ok');
   for (const id of ['ly-replace', 'ly-lint']) assert.ok(html.includes(`id="${id}"`), '工具列少了按鈕:' + id);
   console.log('layout tools ok');
 }
+
+// 語法檢查:每一支 js 都要能被 parse。
+// 實測事故:generate.js 出現重複的 const 宣告,整個工作台載不起來、畫面空白
+// (使用者看到的是「專案不見了」),但這裡只 import 沒有 DOM 依賴的模組,完全沒發現。
+for (const f of readdirSync('js').filter(x => x.endsWith('.js'))) {
+  execFileSync(process.execPath, ['--check', `js/${f}`]);
+}
+console.log('js 語法檢查 ok');
