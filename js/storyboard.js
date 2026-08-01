@@ -101,7 +101,7 @@ async function aiStoryboard() {
 
 function addPanel() {
   if (!app.chapter) { toast('先在右上角新增章節'); return; }
-  sb.panels.push({ id: 'p' + Date.now().toString(36), order: sb.panels.length + 1, scene: '', characters: [], world: [], continues: '', camera: '', shot: '中景', dialogue: [], notes: '' });
+  sb.panels.push({ id: 'p' + Date.now().toString(36), order: sb.panels.length + 1, scene: '', characters: [], world: [], scene_id: '', continues: '', camera: '', shot: '中景', dialogue: [], notes: '' });
   renderPanels();
   autosave();
 }
@@ -136,6 +136,7 @@ function renderPanels() {
     h('div', { class: 'sb-grid' },
       h('label', {}, '出場角色(id,逗號分隔)', h('input', { value: p.characters.join(','), oninput: e => { p.characters = e.target.value.split(/[,、\s]+/).filter(Boolean); autosave(); } })),
       h('label', {}, '場景/道具(world id,逗號分隔)', h('input', { value: (p.world || []).join(','), oninput: e => { p.world = e.target.value.split(/[,、\s]+/).filter(Boolean); autosave(); } })),
+      h('label', {}, '場次(chapter.json 的 scenes id,例 S4)', h('input', { value: p.scene_id || '', oninput: e => { p.scene_id = e.target.value.trim(); autosave(); } })),
       h('label', {}, '機位(平面圖上的代號,例 A)', h('input', { value: p.camera || '', oninput: e => { p.camera = e.target.value.trim(); autosave(); } })),
       h('label', {}, '承接姿勢(前一格 id,連戲用)', h('input', { value: p.continues || '', oninput: e => { p.continues = e.target.value.trim(); autosave(); } })),
       h('label', {}, '鏡頭', h('input', { value: p.shot, oninput: e => { p.shot = e.target.value; autosave(); } })),

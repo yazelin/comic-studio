@@ -13,7 +13,7 @@ const HALF = /[,.!?:;()"']/g;          // 中文台詞裡不該出現的半形�
 const NARRATOR = ['旁白', ''];          // 旁白可以沒有 speaker
 
 // 驗一章;回傳問題陣列。cast=可用的說話者名字/ id
-export function lintStoryboard(sb, { chapter = '', cast = [], world = [], cameras = {} } = {}) {
+export function lintStoryboard(sb, { chapter = '', cast = [], world = [], cameras = {}, scenes = [] } = {}) {
   const bad = [];
   const at = p => `${chapter}/${p.id || '?'}`;
   const seen = new Set();
@@ -23,6 +23,9 @@ export function lintStoryboard(sb, { chapter = '', cast = [], world = [], camera
     if (!String(p.scene || '').trim()) bad.push(`${at(p)}:scene 空白`);
     for (const w of p.world || []) {
       if (world.length && !world.includes(w)) bad.push(`${at(p)}:world「${w}」在 world/ 裡找不到——場景鎖等於沒附`);
+    }
+    if (p.scene_id && scenes.length && !scenes.some(s => s.id === p.scene_id)) {
+      bad.push(`${at(p)}:scene_id「${p.scene_id}」不在 chapter.json 的 scenes 裡`);
     }
     if (p.camera) {
       const ok = (p.world || []).some(w => (cameras[w] || []).includes(p.camera));
@@ -114,7 +117,16 @@ for (const dir of chDirs) {
   // 宣告過才算數,才擋得住把「守衛」打成「衛守」這種沒人會發現的錯字
   const cj = join(root, 'chapters', dir, 'chapter.json');
   const extras = existsSync(cj) ? (JSON.parse(readFileSync(cj, 'utf8')).extras || []) : [];
-  const bad = lintStoryboard(JSON.parse(readFileSync(sbPath, 'utf8')), { chapter: dir, cast: [...cast, ...extras], world, cameras });
+  const chJson = existsSync(cj) ? JSON.parse(readFileSync(cj, 'utf8')) : {};
+  const scenes = chJson.scenes || [];
+  const sbData = JSON.parse(readFileSync(sbPath, 'utf8'));
+  const ids = new Set((sbData.panels || []).map(p => p.id));
+  for (const sc of scenes) {
+    for (const c of sc.changes || []) {
+      if (!ids.has(c.at)) console.log(`  ⚠ 場次 ${sc.id} 的 changes 指到不存在的格「${c.at}」`);
+    }
+  }
+  const bad = lintStoryboard(sbData, { chapter: dir, cast: [...cast, ...extras], world, cameras, scenes });
   total += bad.length;
   console.log(bad.length ? `\n[${dir}] ${bad.length} 條:\n` + bad.map(b => '  ' + b).join('\n') : `[${dir}] 通過`);
 }
