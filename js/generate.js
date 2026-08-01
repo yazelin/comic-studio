@@ -69,6 +69,12 @@ async function generatePanel(p, chars, { count, size, onStatus }) {
     if (refDataURLs.length >= MAX_REFS) break;
     const w = await data.worldRefDataURL(id);
     if (w) refDataURLs.push(w);
+    if (refDataURLs.length >= MAX_REFS) break;
+    // 有指定機位才附平面圖:沒指定的話模型不知道要站在哪裡看,平面圖只會變成雜訊
+    if (p.camera) {
+      const plan = await data.worldPlanDataURL(id);
+      if (plan) refDataURLs.push(plan);
+    }
   }
   for (const c of present) {
     const ref = await data.charSheetDataURL(c.id, 'ref.png');

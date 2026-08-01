@@ -78,6 +78,15 @@ export async function saveWorld(card) {
   await store.writeJSON(`world/${card.id}/card.json`, card);
 }
 
+// 平面配置圖:同一個空間有很多格、每格機位不同,單張正視參考圖擋不住漂移——
+// 窗戶、家具、掛飾的位置會每格重抽。平面圖把「這個空間有什麼、彼此的相對位置」
+// 一次講完,再配上 panel.camera 指名這一格從哪個機位拍。
+export async function worldPlanDataURL(id) {
+  try {
+    return 'data:image/png;base64,' + await store.readBlobB64(`world/${id}/plan.png`);
+  } catch { return null; }
+}
+
 export async function worldRefDataURL(id) {
   try {
     return 'data:image/png;base64,' + await store.readBlobB64(`world/${id}/ref.png`);

@@ -13,7 +13,7 @@ const HALF = /[,.!?:;()"']/g;          // 中文台詞裡不該出現的半形�
 const NARRATOR = ['旁白', ''];          // 旁白可以沒有 speaker
 
 // 驗一章;回傳問題陣列。cast=可用的說話者名字/ id
-export function lintStoryboard(sb, { chapter = '', cast = [], world = [] } = {}) {
+export function lintStoryboard(sb, { chapter = '', cast = [], world = [], cameras = {} } = {}) {
   const bad = [];
   const at = p => `${chapter}/${p.id || '?'}`;
   const seen = new Set();
@@ -23,6 +23,12 @@ export function lintStoryboard(sb, { chapter = '', cast = [], world = [] } = {})
     if (!String(p.scene || '').trim()) bad.push(`${at(p)}:scene 空白`);
     for (const w of p.world || []) {
       if (world.length && !world.includes(w)) bad.push(`${at(p)}:world「${w}」在 world/ 裡找不到——場景鎖等於沒附`);
+    }
+    if (p.camera) {
+      const ok = (p.world || []).some(w => (cameras[w] || []).includes(p.camera));
+      if (!ok && Object.keys(cameras).length) {
+        bad.push(`${at(p)}:機位「${p.camera}」不在這一格任何 world 卡的 cameras 表裡`);
+      }
     }
     if ((p.characters || []).length && !/表情/.test(p.scene || '')) {
       bad.push(`${at(p)}:有角色卻沒寫「表情:」——生圖會出呆臉`);
@@ -87,10 +93,14 @@ if (existsSync(charRoot)) {
 }
 
 const world = [];
+const cameras = {};
 const worldRoot = join(root, 'world');
 if (existsSync(worldRoot)) {
   for (const id of readdirSync(worldRoot)) {
-    if (existsSync(join(worldRoot, id, 'card.json'))) world.push(id);
+    const cj = join(worldRoot, id, 'card.json');
+    if (!existsSync(cj)) continue;
+    world.push(id);
+    cameras[id] = Object.keys(JSON.parse(readFileSync(cj, 'utf8')).cameras || {});
   }
 }
 
@@ -104,7 +114,7 @@ for (const dir of chDirs) {
   // 宣告過才算數,才擋得住把「守衛」打成「衛守」這種沒人會發現的錯字
   const cj = join(root, 'chapters', dir, 'chapter.json');
   const extras = existsSync(cj) ? (JSON.parse(readFileSync(cj, 'utf8')).extras || []) : [];
-  const bad = lintStoryboard(JSON.parse(readFileSync(sbPath, 'utf8')), { chapter: dir, cast: [...cast, ...extras], world });
+  const bad = lintStoryboard(JSON.parse(readFileSync(sbPath, 'utf8')), { chapter: dir, cast: [...cast, ...extras], world, cameras });
   total += bad.length;
   console.log(bad.length ? `\n[${dir}] ${bad.length} 條:\n` + bad.map(b => '  ' + b).join('\n') : `[${dir}] 通過`);
 }

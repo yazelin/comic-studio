@@ -61,6 +61,7 @@ export function parseStoryboard(text) {
     characters: Array.isArray(p.characters) ? p.characters.map(String) : [],
     world: Array.isArray(p.world) ? p.world.map(String) : [],
     continues: String(p.continues || ''),
+    camera: String(p.camera || ''),
     shot: String(p.shot || ''),
     dialogue: Array.isArray(p.dialogue)
       ? p.dialogue.map(d => ({
@@ -150,14 +151,25 @@ export function buildPanelPrompt({ style, panel, characterCards = [], worldCards
   const cast = characterCards
     .filter(c => panel.characters.includes(c.id) || panel.characters.includes(c.name))
     .map(c => `- ${c.name}: ${c.card}${c.must_not ? `\n  絕對不可出現: ${c.must_not}` : ''}`);
-  const world = worldCards
-    .filter(w => (panel.world || []).includes(w.id) || (panel.world || []).includes(w.name))
+  const wUsed = worldCards.filter(w => (panel.world || []).includes(w.id) || (panel.world || []).includes(w.name));
+  const world = wUsed
     .map(w => `- ${w.name}: ${w.card}${w.must_not ? `\n  絕對不可出現: ${w.must_not}` : ''}`);
+  // 機位:平面圖上標好的固定拍攝位置。同一個空間的每一格都從表上挑一個,
+  // 家具與門窗的相對位置才不會每格重抽。
+  const camLine = (() => {
+    if (!panel.camera) return '';
+    for (const w of wUsed) {
+      const d = (w.cameras || {})[panel.camera];
+      if (d) return `機位 ${panel.camera}(照平面配置圖):${d}`;
+    }
+    return `機位 ${panel.camera}`;
+  })();
   return [
     `畫風: ${style}`,
     `鏡頭: ${shotLine(panel.shot)}`,
     `畫面: ${panel.scene}`,
     world.length ? '場景與道具(必須完全符合設定):\n' + world.join('\n') : '',
+    camLine,
     cast.length ? '出場角色(外觀必須完全符合設定):\n' + cast.join('\n') : '',
     panel.notes ? `備註: ${panel.notes}` : '',
     (cast.length ? '參考圖裡的角色設定圖只提供**長相與服裝**。姿勢、取景、視線一律照上面「畫面」寫的做,'
