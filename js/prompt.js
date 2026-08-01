@@ -154,6 +154,9 @@ export function buildPanelPrompt({ style, panel, characterCards = [], worldCards
   const wUsed = worldCards.filter(w => (panel.world || []).includes(w.id) || (panel.world || []).includes(w.name));
   const world = wUsed
     .map(w => `- ${w.name}: ${w.card}${w.must_not ? `\n  絕對不可出現: ${w.must_not}` : ''}`);
+  // 站位/座位:平面圖鎖「家具在哪裡」,機位鎖「從哪裡看」,這個鎖「誰在哪裡」。
+  // 少了它,同一場戲裡每個人的位子會每格重排——讀者會覺得大家一直在換位子。
+  const seating = wUsed.filter(w => w.seating).map(w => `- ${w.name}:${w.seating}`);
   // 機位:平面圖上標好的固定拍攝位置。同一個空間的每一格都從表上挑一個,
   // 家具與門窗的相對位置才不會每格重抽。
   const camLine = (() => {
@@ -170,6 +173,7 @@ export function buildPanelPrompt({ style, panel, characterCards = [], worldCards
     `畫面: ${panel.scene}`,
     world.length ? '場景與道具(必須完全符合設定):\n' + world.join('\n') : '',
     camLine,
+    seating.length ? '固定站位/座位(整場戲不變,不可重排):\n' + seating.join('\n') : '',
     cast.length ? '出場角色(外觀必須完全符合設定):\n' + cast.join('\n') : '',
     panel.notes ? `備註: ${panel.notes}` : '',
     (cast.length ? '參考圖裡的角色設定圖只提供**長相與服裝**。姿勢、取景、視線一律照上面「畫面」寫的做,'
