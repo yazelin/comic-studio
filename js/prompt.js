@@ -60,6 +60,7 @@ export function parseStoryboard(text) {
     scene: String(p.scene || ''),
     characters: Array.isArray(p.characters) ? p.characters.map(String) : [],
     world: Array.isArray(p.world) ? p.world.map(String) : [],
+    scene_id: String(p.scene_id || ''),
     continues: String(p.continues || ''),
     camera: String(p.camera || ''),
     shot: String(p.shot || ''),
@@ -131,6 +132,33 @@ export function buildPoseSheetPrompt({ style, name, card, poses = [] }) {
   ].join('\n');
 }
 
+// 場次(scene):影劇的「場」——同一個地點、同一段連續時間裡的一串鏡頭。
+// 分鏡表(shot list)只描述單一鏡頭;場景、走位、道具、時間這些整場共用的東西
+// 寫在場次上,每一格自動繼承,不必逐格手抄(抄漏一格就出連戲事故)。
+//
+// changes 是「這場戲中途世界變了」的宣告:{at:"p64", note:"石柱與土堤都不見了"}。
+// 在 p64 之後的每一格都會自動帶上那句話——實測過的事故:整場最重的三格畫著
+// 已經被切掉的石柱,因為「世界變了」只寫在發生的那一格裡,後面的格不知道。
+export function sceneContext(scene, panel, panels = []) {
+  if (!scene) return '';
+  const idx = panels.findIndex(x => x.id === panel.id);
+  const done = (scene.changes || []).filter(c => {
+    const j = panels.findIndex(x => x.id === c.at);
+    return j >= 0 && idx >= 0 && idx >= j;
+  });
+  const props = scene.props && Object.keys(scene.props).length
+    ? Object.entries(scene.props).map(([k, v]) => `${k}:${v}`).join(';')
+    : '';
+  return [
+    `場次 ${scene.id}:${scene.name || ''}${scene.time ? `(${scene.time})` : ''}`,
+    scene.state ? `這場戲的狀態:${scene.state}` : '',
+    scene.blocking ? `走位(整場不變):${scene.blocking}` : '',
+    props ? `隨身道具:${props}` : '',
+    done.length ? '**這一格之前已經發生的變更(必須反映在畫面上)**:\n'
+      + done.map(c => `- ${c.note}`).join('\n') : '',
+  ].filter(Boolean).join('\n');
+}
+
 // 鏡頭只寫「中景」兩個字沒有用:角色立繪是全身白底站姿,模型會連取景一起抄走,
 // 於是每一格都變成全身立繪。把鏡頭翻成具體的裁切指令才擋得住。
 const SHOT_CROP = {
@@ -147,7 +175,7 @@ function shotLine(shot) {
 }
 
 // 單格生圖 prompt = 全域畫風 + 鏡頭 + 場景 + 出場角色設定卡 + 全域紅線 + 禁畫字
-export function buildPanelPrompt({ style, panel, characterCards = [], worldCards = [], rules = [] }) {
+export function buildPanelPrompt({ style, panel, characterCards = [], worldCards = [], rules = [], scene = null, panels = [] }) {
   const cast = characterCards
     .filter(c => panel.characters.includes(c.id) || panel.characters.includes(c.name))
     .map(c => `- ${c.name}: ${c.card}${c.must_not ? `\n  絕對不可出現: ${c.must_not}` : ''}`);
@@ -169,6 +197,7 @@ export function buildPanelPrompt({ style, panel, characterCards = [], worldCards
   })();
   return [
     `畫風: ${style}`,
+    sceneContext(scene, panel, panels),
     `鏡頭: ${shotLine(panel.shot)}`,
     `畫面: ${panel.scene}`,
     world.length ? '場景與道具(必須完全符合設定):\n' + world.join('\n') : '',

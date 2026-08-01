@@ -81,6 +81,12 @@ export async function saveWorld(card) {
 // 平面配置圖:同一個空間有很多格、每格機位不同,單張正視參考圖擋不住漂移——
 // 窗戶、家具、掛飾的位置會每格重抽。平面圖把「這個空間有什麼、彼此的相對位置」
 // 一次講完,再配上 panel.camera 指名這一格從哪個機位拍。
+// 場次表放章節的 chapter.json 的 scenes 陣列(不另開檔:一章一份,跟 title/extras 同層)
+export async function listScenes(dir) {
+  const ch = await store.readJSON(chapterPath(dir, 'chapter.json'), null);
+  return (ch && ch.scenes) || [];
+}
+
 export async function worldPlanDataURL(id) {
   try {
     return 'data:image/png;base64,' + await store.readBlobB64(`world/${id}/plan.png`);
