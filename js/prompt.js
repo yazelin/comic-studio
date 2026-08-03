@@ -198,10 +198,11 @@ export function buildPanelPrompt({ style, panel, characterCards = [], worldCards
   return [
     `畫風: ${style}`,
     sceneContext(scene, panel, panels),
+    // 機位緊跟在鏡頭後面:它是這一格的空間前提,埋在設定卡後面會被稀釋
+    camLine,
     `鏡頭: ${shotLine(panel.shot)}`,
     `畫面: ${panel.scene}`,
     world.length ? '場景與道具(必須完全符合設定):\n' + world.join('\n') : '',
-    camLine,
     seating.length ? '固定站位/座位(整場戲不變,不可重排):\n' + seating.join('\n') : '',
     cast.length ? '出場角色(外觀必須完全符合設定):\n' + cast.join('\n') : '',
     panel.notes ? `備註: ${panel.notes}` : '',
