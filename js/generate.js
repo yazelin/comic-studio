@@ -45,58 +45,10 @@ async function generatePanel(p, chars, { count, size, onStatus }) {
         + '維持跟其他格一樣的繪畫感動畫背景。附上的參考圖只提供畫風,不要複製它的內容。'
       : '',
   ].filter(Boolean).join('\n');
-  // 參考圖:立繪必附;該格寫了表情就附表情集,是動作鏡頭就附動作集。
-  // 上限 4 張——再多張特徵會互相污染(cast-lock 實測)。
-  const scene = `${p.scene || ''} ${p.shot || ''}`;
-  const wantExpr = /表情|情緒|臉/.test(scene);
-  const wantPose = /動作|全身|奔跑|跑|走|坐|蹲|站|撲|倒|伸手|後退/.test(scene);
-  // 參考圖優先序:場景/道具鎖 → 每個出場角色的立繪(保底一張)→ 剩餘額度輪流補表情/動作。
-  // (先前是逐角色塞滿,三人同框時第三個人連立繪都被截掉=保證漂移)
-  // 上限看 provider:codex 那條 API 沒有張數限制(實測 reference_images_base64 無 max_items),
-  // gemini-web 只吃單張、多張會被併成一張,張數一多每張就變小,所以維持 4。
-  const MAX_REFS = app.meta?.providers.image === 'codex-image-service' ? 8 : 4;
-  const present = chars.filter(c => p.characters.includes(c.id) || p.characters.includes(c.name));
-  const refDataURLs = [];
-  // 承前格:前一格的成品同時帶著場景、角色與姿勢,是最強的連戲訊號,所以排第一
-  if (p.continues) {
-    const prev = await data.loadPanelState(app.chapter, p.continues).catch(() => null);
-    if (prev?.chosen) {
-      const u = await data.panelImageURL(app.chapter, p.continues, prev.chosen);
-      if (u) {
-        const blob = await (await fetch(u)).blob();
-        refDataURLs.push(await new Promise(ok => { const r = new FileReader(); r.onload = () => ok(r.result); r.readAsDataURL(blob); }));
-      }
-    }
-  }
-  // 承前格不存在、也沒有任何場景/角色可附時,畫風就沒有錨——補一張(見 data.styleAnchorDataURL)
-  const needAnchor = !p.continues && !(p.world || []).length && !p.characters.length;
-  if (needAnchor) {
-    const a = await data.styleAnchorDataURL();
-    if (a) refDataURLs.push(a);
-  }
-  for (const id of (p.world || [])) {
-    if (refDataURLs.length >= MAX_REFS) break;
-    const w = await data.worldRefDataURL(id);
-    if (w) refDataURLs.push(w);
-    if (refDataURLs.length >= MAX_REFS) break;
-    // 有指定機位才附平面圖:沒指定的話模型不知道要站在哪裡看,平面圖只會變成雜訊
-    if (p.camera) {
-      const plan = await data.worldPlanDataURL(id);
-      if (plan) refDataURLs.push(plan);
-    }
-  }
-  for (const c of present) {
-    const ref = await data.charSheetDataURL(c.id, 'ref.png');
-    if (ref) refDataURLs.push(ref);
-  }
-  for (const file of [...(wantExpr ? ['expr.png'] : []), ...(wantPose ? ['pose.png'] : [])]) {
-    for (const c of present) {
-      if (refDataURLs.length >= MAX_REFS) break;
-      const s = await data.charSheetDataURL(c.id, file);
-      if (s) refDataURLs.push(s);
-    }
-  }
-  refDataURLs.length = Math.min(refDataURLs.length, MAX_REFS);
+  const items = await collectRefs(p, chars, { chapter: app.chapter, provider: app.meta?.providers.image });
+  const stForRefs = await data.loadPanelState(app.chapter, p.id);
+  const off = new Set(stForRefs.ref_off || []);
+  const refDataURLs = items.filter(i => !off.has(i.key)).map(i => i.data);
   const imgs = await generateImages({ provider, prompt: promptText, refDataURLs, count, size, onStatus });
   const existing = await data.listCandidates(app.chapter, p.id);
   let n = existing.length;
@@ -111,6 +63,51 @@ async function generatePanel(p, chars, { count, size, onStatus }) {
     await data.savePanelState(app.chapter, p.id, st);
   }
   return imgs.length;
+}
+
+// 這一格會送哪些參考圖。抽成函式是為了讓「生圖」頁能把清單畫出來——
+// 參考圖看不到的時候,矛盾(例如正視圖與平面圖不是同一個房間)只能靠猜。
+// 順序即優先序:平面圖(空間的唯一事實來源)→ 正視圖(材質光線)→ 角色立繪
+// → 承前格(只承接人物與光線)→ 表情/動作集。上限看 provider。
+export async function collectRefs(p, chars, { chapter, provider }) {
+  const MAX_REFS = provider === 'codex-image-service' ? 8 : 4;
+  const worlds = await data.listWorld();
+  const nameOf = id => worlds.find(w => w.id === id)?.name || id;
+  const out = [];
+  const push = (key, label, dataOrNull) => { if (dataOrNull && out.length < MAX_REFS) out.push({ key, label, data: dataOrNull }); };
+
+  for (const id of (p.world || [])) {
+    if (p.camera) push(`plan:${id}`, `${nameOf(id)} 平面圖(機位 ${p.camera})`, await data.worldPlanDataURL(id, p.camera));
+    push(`world:${id}`, `${nameOf(id)} 正視圖`, await data.worldRefDataURL(id));
+  }
+  const present = chars.filter(c => p.characters.includes(c.id) || p.characters.includes(c.name));
+  for (const c of present) push(`char:${c.id}`, `${c.name} 立繪`, await data.charSheetDataURL(c.id, 'ref.png'));
+
+  if (p.continues) {
+    const prev = await data.loadPanelState(chapter, p.continues).catch(() => null);
+    if (prev?.chosen) {
+      const u = await data.panelImageURL(chapter, p.continues, prev.chosen);
+      if (u) {
+        const blob = await (await fetch(u)).blob();
+        const d = await new Promise(ok => { const r = new FileReader(); r.onload = () => ok(r.result); r.readAsDataURL(blob); });
+        push(`cont:${p.continues}`, `承接 ${p.continues}(只給人物與光線)`, d);
+      }
+    }
+  }
+  const txt = `${p.scene || ''} ${p.shot || ''}`;
+  const wantExpr = /表情|情緒|臉/.test(txt);
+  const wantPose = /動作|全身|奔跑|跑|走|坐|蹲|站|撲|倒|伸手|後退/.test(txt);
+  for (const file of [...(wantExpr ? ['expr.png'] : []), ...(wantPose ? ['pose.png'] : [])]) {
+    for (const c of present) {
+      push(`${file === 'expr.png' ? 'expr' : 'pose'}:${c.id}`,
+        `${c.name} ${file === 'expr.png' ? '表情集' : '動作集'}`, await data.charSheetDataURL(c.id, file));
+    }
+  }
+  // 沒有人也沒有場景時畫風沒有錨,會漂成照片
+  if (!out.length || (!(p.world || []).length && !present.length && !p.continues)) {
+    push('style', '畫風錨(這一格沒有人,不補會漂成照片)', await data.styleAnchorDataURL());
+  }
+  return out;
 }
 
 // ── 整章批量 ──
@@ -174,6 +171,27 @@ async function renderPanel(p, i, chars) {
     candRow.append(cell);
   }
 
+  // 參考圖清單:看得見才查得出矛盾(例如正視圖與平面圖不是同一個房間)。
+  // 取消勾選會存進 panel.json 的 ref_off,只影響這一格。
+  const refRow = h('div', { class: 'ref-row' }, h('span', { class: 'ref-label' }, '參考圖:'));
+  const items = await collectRefs(p, chars, { chapter: app.chapter, provider: app.meta?.providers.image });
+  st.ref_off = st.ref_off || [];
+  if (!items.length) refRow.append(h('span', { class: 'status' }, '(這一格沒有任何參考圖——空鏡容易漂成照片)'));
+  for (const it of items) {
+    const on = !st.ref_off.includes(it.key);
+    const cell = h('label', { class: 'ref-chip' + (on ? '' : ' off'), title: it.key },
+      h('input', { type: 'checkbox', checked: on, onchange: async (e) => {
+        const set = new Set(st.ref_off);
+        e.target.checked ? set.delete(it.key) : set.add(it.key);
+        st.ref_off = [...set];
+        await data.savePanelState(app.chapter, p.id, st);
+        cell.classList.toggle('off', !e.target.checked);
+      } }),
+      h('img', { src: it.data, alt: it.label, onclick: (e) => { e.preventDefault(); lightbox(it.data); } }),
+      h('span', {}, it.label));
+    refRow.append(cell);
+  }
+
   const status = h('span', { class: 'status' });
   const genBtn = h('button', { class: cands.length ? '' : 'primary', onclick: async () => {
     genBtn.disabled = true;
@@ -197,6 +215,7 @@ async function renderPanel(p, i, chars) {
       h('span', { class: 'scene' }, p.scene.slice(0, 72) || '(無畫面描述)'),
     ),
     h('details', {}, h('summary', {}, '看這格的 prompt'), h('div', { class: 'prompt-preview' }, promptText)),
+    refRow,
     h('div', { class: 'row' }, genBtn, status, st.chosen ? h('span', { class: 'chosen-mark' }, '✓ 已選定') : null),
     candRow,
   );
