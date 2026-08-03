@@ -173,7 +173,19 @@ async function renderPanel(p, i, chars) {
 
   // 參考圖清單:看得見才查得出矛盾(例如正視圖與平面圖不是同一個房間)。
   // 取消勾選會存進 panel.json 的 ref_off,只影響這一格。
+  // **點開才載**:每格六張參考圖讀成 base64,整章一百多格會讓頁面等於載入好幾百 MB,
+  // 畫面會空白很久看起來像壞掉(實測踩過)。
   const refRow = h('div', { class: 'ref-row' }, h('span', { class: 'ref-label' }, '參考圖:'));
+  const refBox = h('details', { class: 'ref-details' },
+    h('summary', {}, '看這格送了哪些參考圖'), refRow);
+  let refsLoaded = false;
+  refBox.addEventListener('toggle', async () => {
+    if (!refBox.open || refsLoaded) return;
+    refsLoaded = true;
+    await fillRefs();
+  });
+
+  async function fillRefs() {
   const items = await collectRefs(p, chars, { chapter: app.chapter, provider: app.meta?.providers.image });
   st.ref_off = st.ref_off || [];
   if (!items.length) refRow.append(h('span', { class: 'status' }, '(這一格沒有任何參考圖——空鏡容易漂成照片)'));
@@ -190,6 +202,7 @@ async function renderPanel(p, i, chars) {
       h('img', { src: it.data, alt: it.label, onclick: (e) => { e.preventDefault(); lightbox(it.data); } }),
       h('span', {}, it.label));
     refRow.append(cell);
+  }
   }
 
   const status = h('span', { class: 'status' });
@@ -215,7 +228,7 @@ async function renderPanel(p, i, chars) {
       h('span', { class: 'scene' }, p.scene.slice(0, 72) || '(無畫面描述)'),
     ),
     h('details', {}, h('summary', {}, '看這格的 prompt'), h('div', { class: 'prompt-preview' }, promptText)),
-    refRow,
+    refBox,
     h('div', { class: 'row' }, genBtn, status, st.chosen ? h('span', { class: 'chosen-mark' }, '✓ 已選定') : null),
     candRow,
   );
