@@ -87,10 +87,13 @@ export async function listScenes(dir) {
   return (ch && ch.scenes) || [];
 }
 
-export async function worldPlanDataURL(id) {
-  try {
-    return 'data:image/png;base64,' + await store.readBlobB64(`world/${id}/plan.png`);
-  } catch { return null; }
+export async function worldPlanDataURL(id, camera = '') {
+  // 每機位一張(plan-A.png)優先:共用圖上好幾個機位標記擠在一起,模型會認錯
+  for (const f of [camera ? `world/${id}/plan-${camera}.png` : null, `world/${id}/plan.png`]) {
+    if (!f) continue;
+    try { return 'data:image/png;base64,' + await store.readBlobB64(f); } catch { /* 下一個 */ }
+  }
+  return null;
 }
 
 export async function worldRefDataURL(id) {
