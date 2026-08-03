@@ -318,3 +318,9 @@ dialog::backdrop { background: rgba(8,8,10,.72); }
 .lint-list b { display: inline-block; min-width: 4.5em; color: var(--dim); font-weight: 600; }
 .lint-err { color: var(--err); }
 .lint-warn { color: #d6b25f; }
+
+/* 世界頁:平面圖編輯 */
+.plan-wrap { max-width: min(78vw, 900px); }
+.plan-edit { width: 100%; height: auto; display: block; cursor: crosshair; border-radius: 6px; }
+.cam-row { display: grid; grid-template-columns: 4.5rem 1fr auto; gap: .5rem; align-items: center; }
+.cam-row input { width: 100%; }
