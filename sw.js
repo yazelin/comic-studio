@@ -4,7 +4,7 @@
 //   1. 殼可離線:斷線時 UI 還開得起來、專案資料夾(File System Access)照樣讀得到
 //   2. 可安裝:桌面一顆 icon 直接開工作台
 // **絕不快取任何 API 回應**(生圖端點、模型清單):快取一張圖幾 MB,而且會讓人以為離線能生圖。
-const SHELL = 'cs-shell-v2';
+const SHELL = 'cs-shell-v3';
 const SHELL_FILES = [
   './', './index.html', './studio.html',
   './css/studio.css',
