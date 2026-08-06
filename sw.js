@@ -4,7 +4,9 @@
 //   1. 殼可離線:斷線時 UI 還開得起來、專案資料夾(File System Access)照樣讀得到
 //   2. 可安裝:桌面一顆 icon 直接開工作台
 // **絕不快取任何 API 回應**(生圖端點、模型清單):快取一張圖幾 MB,而且會讓人以為離線能生圖。
-const SHELL = 'cs-shell-v3';
+// 前綴 cstudio- 不是 cs-:token-unlimited-comic 用的就是 cs-,而 yazelin.github.io
+// 所有專案共用同一個 origin、共用同一份 CacheStorage(scope 只管 fetch,管不到快取)。
+const SHELL = 'cstudio-shell-v4';
 const SHELL_FILES = [
   './', './index.html', './studio.html',
   './css/studio.css',
@@ -27,7 +29,10 @@ self.addEventListener('install', e => {
 
 self.addEventListener('activate', e => {
   e.waitUntil(caches.keys()
-    .then(keys => Promise.all(keys.filter(k => k !== SHELL).map(k => caches.delete(k))))
+    // 只清自己的 cstudio-*:CacheStorage 是 per-origin,無差別刪會把同 origin 其他
+    // 專案(gewu 33MB、neko、token-unlimited…)的離線包整包清掉,而且完全沒有徵兆。
+    // 'cs-shell-v3' 是本站改名前的舊快取,一次性收掉(那是自己的,不是 tuc 的 cs-shell-lnzmxo-*)
+    .then(keys => Promise.all(keys.filter(k => (k.startsWith('cstudio-') || k === 'cs-shell-v3') && k !== SHELL).map(k => caches.delete(k))))
     .then(() => self.clients.claim()));
 });
 
