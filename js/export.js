@@ -234,11 +234,15 @@ function swJs({ title, shellPaths, imagePaths, shellHash, assetHash }) {
 const SHELL = 'cs-shell-${shellHash}';
 const ASSET = 'cs-asset-${assetHash}';
 const SHELL_FILES = ${JSON.stringify(shellPaths, null, 1)};
+// 這份清單不再被 addAll(見下方 install),留著是為了讓 ASSET 快取版本能跟著內容變:
+// 圖換了名單就變、雜湊就變、舊快取在 activate 時被清掉。刪掉它=重烙同名圖時讀者永遠拿舊的。
 const ASSET_FILES = ${JSON.stringify(imagePaths, null, 1)};
+// 安裝只抓殼。圖不預抓——一本連載的圖會長到幾百張、幾十 MB,addAll 全部意味著
+// 讀者第一次點進來就要先吞下整本才算安裝完成,而在那之前瀏覽器不會給安裝入口
+// (實測:124 檔 29MB 時安裝鈕就已經遲遲不出現)。圖改成讀到哪快取到哪。
 self.addEventListener('install', e => {
   e.waitUntil((async () => {
     const s = await caches.open(SHELL); await s.addAll(SHELL_FILES);
-    const a = await caches.open(ASSET); await a.addAll(ASSET_FILES);
     self.skipWaiting();
   })());
 });
@@ -250,7 +254,23 @@ self.addEventListener('activate', e => {
     keys.filter(k => k.startsWith('cs-') && k !== SHELL && k !== ASSET).map(k => caches.delete(k))
   )).then(() => self.clients.claim()));
 });
+// 圖:cache-first,沒有就抓網路並存進 ASSET(讀過的章節之後就能離線看)。
+// 其餘(殼)照舊:快取優先,沒有才走網路。
+// 圖一律在 imgs/ 底下(格圖、角色圖、封面),字型與殼在別處走 SHELL
+const isAsset = (url) => new URL(url).pathname.includes('/imgs/');
 self.addEventListener('fetch', e => {
+  if (e.request.method !== 'GET') return;
+  if (isAsset(e.request.url)) {
+    e.respondWith((async () => {
+      const c = await caches.open(ASSET);
+      const hit = await c.match(e.request, { ignoreSearch: true });
+      if (hit) return hit;
+      const res = await fetch(e.request);
+      if (res.ok) c.put(e.request, res.clone());
+      return res;
+    })());
+    return;
+  }
   e.respondWith(caches.match(e.request, { ignoreSearch: true }).then(hit => hit || fetch(e.request)));
 });
 `;
