@@ -6,7 +6,7 @@
 // **絕不快取任何 API 回應**(生圖端點、模型清單):快取一張圖幾 MB,而且會讓人以為離線能生圖。
 // 前綴 cstudio- 不是 cs-:token-unlimited-comic 用的就是 cs-,而 yazelin.github.io
 // 所有專案共用同一個 origin、共用同一份 CacheStorage(scope 只管 fetch,管不到快取)。
-const SHELL = 'cstudio-shell-v4';
+const SHELL = 'cstudio-shell-v5';
 const SHELL_FILES = [
   './', './index.html', './studio.html',
   './css/studio.css',

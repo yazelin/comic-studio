@@ -207,6 +207,9 @@ $('#do-export').onclick = async () => {
     if (fontBlob) await store.writeBlob('dist/fonts/comic-tc.woff2', fontBlob);
     if (ogBlob) await store.writeBlob('dist/og.jpg', ogBlob);
     for (const size of [192, 512]) await store.writeBlob(`dist/icon-${size}.png`, await makeIcon(app.meta.title, size));
+    // maskable:Android 會在外面套遮罩,安全區是中央 80%。makeIcon 的字本來就只佔 55%,
+    // 但要再縮一階,遮罩切到圓角時字才不會貼邊。manifest 指名要這個檔,少了會 404。
+    await store.writeBlob('dist/icon-maskable-512.png', await makeIcon(app.meta.title, 512, 0.42));
 
     const total = files.length + imageBlobs.length + 2 + (fontBlob ? 1 : 0) + (ogBlob ? 1 : 0);
     setStatus('#export-status', `完成:dist/ 共 ${total} 個檔、${chapters.length} 章。`
@@ -231,7 +234,7 @@ async function makeOg(coverBlob) {
   return new Promise(ok => c.toBlob(ok, 'image/jpeg', 0.88));
 }
 
-async function makeIcon(title, size) {
+async function makeIcon(title, size, ratio = 0.55) {
   const c = document.createElement('canvas');
   c.width = c.height = size;
   const ctx = c.getContext('2d');
@@ -239,10 +242,10 @@ async function makeIcon(title, size) {
   ctx.fillRect(0, 0, size, size);
   ctx.fillStyle = '#eceae4';
   // canvas 不會自己觸發 webfont 載入,沒先 load 就會用系統字畫出來
-  await document.fonts.load(`700 ${size * 0.55}px "Comic TC"`).catch(() => {});
-  ctx.font = `700 ${size * 0.55}px 'Comic TC', "Noto Sans TC", sans-serif`;
+  await document.fonts.load(`700 ${size * ratio}px "Comic TC"`).catch(() => {});
+  ctx.font = `700 ${size * ratio}px 'Comic TC', "Noto Sans TC", sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText((title || '漫').slice(0, 1), size / 2, size / 2 + size * 0.03);
+  ctx.fillText((title || '漫').slice(0, 1), size / 2, size / 2 + size * ratio * 0.055);
   return new Promise(ok => c.toBlob(ok, 'image/png'));
 }
