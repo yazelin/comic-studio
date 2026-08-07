@@ -79,8 +79,11 @@ export function buildReaderFiles({ title, chapters, characters = [], site = {}, 
     name: title, short_name: title, start_url: './', scope: './',
     display: 'standalone', background_color: C.bg, theme_color: C.bg,
     icons: [
-      { src: './icon-192.png', sizes: '192x192', type: 'image/png' },
-      { src: './icon-512.png', sizes: '512x512', type: 'image/png' },
+      { src: './icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+      { src: './icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+      // Android 會在 icon 外面套自己的遮罩,沒有 maskable 版就會被切。安全區是中央 80%,
+      // 所以這支是另外畫的(內容縮小、四周留底),不是 icon-512 換個 purpose 而已。
+      { src: './icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
     ],
   }, null, 1) });
   if (site.url) {
@@ -241,7 +244,10 @@ self.addEventListener('install', e => {
 });
 self.addEventListener('activate', e => {
   e.waitUntil(caches.keys().then(keys => Promise.all(
-    keys.filter(k => k !== SHELL && k !== ASSET).map(k => caches.delete(k))
+    // 只清自己的 cs-*:CacheStorage 是 per-origin,<user>.github.io 底下所有專案共用
+    // 同一份(SW 的 scope 只管 fetch,管不到快取)。無差別刪會把同 origin 其他站的
+    // 離線包整包清掉,而且功能完全正常、毫無徵兆。
+    keys.filter(k => k.startsWith('cs-') && k !== SHELL && k !== ASSET).map(k => caches.delete(k))
   )).then(() => self.clients.claim()));
 });
 self.addEventListener('fetch', e => {
